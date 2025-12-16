@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: frontend
-        image: ghcr.io/peler1nl1kelt0s/fleet-tracking-system-frontend:08fe15f01d866b174848e186b3e9d1c82ad40c02
+        image: ghcr.io/peler1nl1kelt0s/fleet-tracking-system-frontend:7a3a33e16169b8fde89c2f8803abcdd4c1787f59
         imagePullPolicy: Always
         ports:
         - containerPort: 80
