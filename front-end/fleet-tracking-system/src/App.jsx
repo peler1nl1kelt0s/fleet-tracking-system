@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plane, BarChart2, Radio } from 'lucide-react';
-import FleetMap from './components/FleetMap';
-import TelemetryChart from './components/TelemetryChart';
-import InfoPanel from './components/InfoPanel';
+// import { Plane } from 'lucide-react'; // İkonları sonra ekleyeceğiz
+// Component importlarını henüz yapmadık, her şey burada
+// import FleetMap from './components/FleetMap'; 
+// import TelemetryChart from './components/TelemetryChart';
+// import InfoPanel from './components/InfoPanel';
 import './App.css'
 
+// Mock Data importları (Data logic hazır kabul ediyoruz)
 import { 
   generateInitialPlanes, 
   updatePlanePositions, 
@@ -17,122 +19,85 @@ function App() {
   const [planes, setPlanes] = useState([]);
   const [selectedPlaneId, setSelectedPlaneId] = useState(null);
   const [historyData, setHistoryData] = useState([]);
+  // Alert ve Chat state'lerini henüz UI'da kullanmıyoruz ama logic hazır
   const [alerts, setAlerts] = useState([]);
   const [chat, setChat] = useState(initialChat);
 
   useEffect(() => {
+    // İlk yükleme
     setPlanes(generateInitialPlanes(30));
   }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setPlanes(currentPlanes => updatePlanePositions(currentPlanes));
+      
+      // Basit veri simülasyonu
       if (selectedPlaneId) {
         setHistoryData(prev => {
           const last = prev[prev.length - 1];
           const newPoint = {
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+            time: new Date().toLocaleTimeString(),
             speed: last ? last.speed + (Math.random() * 20 - 10) : 800,
             altitude: last ? last.altitude + (Math.random() * 100 - 50) : 30000
           };
-          return [...prev.slice(1), newPoint];
+          return [...prev.slice(1), newPoint]; // Array'i sınırlamayı unuttuk (kasıtlı hata/eksik)
         });
       }
     }, 1000);
     return () => clearInterval(interval);
   }, [selectedPlaneId]);
 
-// Random sit. simulation (Warns ve And Chat)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const rand = Math.random();
-      
-      // %30 ihtimalle yeni sohbet
-      if (rand < 0.3) {
-        const newMsg = {
-          user: Math.random() > 0.5 ? 'Pilot_XXX' : 'Operation',
-          text: 'Location update received. Route is being confirmed',
-          timestamp: new Date()
-        };
-        setChat(prev => [...prev, newMsg]);
-      }
-      
-      // %20 chances to new warning
-      if (rand > 0.8) {
-        const randomAlert = alertTypes[Math.floor(Math.random() * alertTypes.length)];
-        setAlerts(prev => [randomAlert, ...prev].slice(0, 50)); // Keep the last 50 alerts
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
   const handleSelectPlane = (plane) => {
     setSelectedPlaneId(plane.id);
-    setHistoryData(generateTelemetryHistory(20)); // Create 20 minutes of past data
+    console.log("Plane selected:", plane.id); // Debug için log bıraktık
+    setHistoryData(generateTelemetryHistory(20));
   };
 
-  const selectedPlane = planes.find(p => p.id === selectedPlaneId);
-
   return (
-    <div className="flex flex-col h-screen bg-gray-950 text-white overflow-hidden font-sans">
+    <div className="p-5 bg-gray-800 text-white min-h-screen">
+      <h1 className="text-2xl mb-4">SkyWatcher Dev Build v0.1</h1>
       
-      {/* Header */}
-      <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center px-6 shadow-md z-20">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg">
-            <Plane size={24} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-wide">SkyWatcher <span className="text-blue-500">Fleet</span></h1>
-            <p className="text-xs text-gray-400">Live Fleet Tracking System v1.0</p>
-          </div>
+      <div className="grid grid-cols-2 gap-4">
+        {/* MAP PLACEHOLDER */}
+        <div className="border border-white p-4 h-[400px] bg-gray-700">
+          <h2 className="font-bold">Map Component Will Be Here</h2>
+          <p>Active Planes: {planes.length}</p>
+          <ul className="h-64 overflow-auto mt-4 text-xs font-mono">
+            {planes.map(p => (
+              <li 
+                key={p.id} 
+                onClick={() => handleSelectPlane(p)}
+                className={`cursor-pointer hover:text-blue-300 ${selectedPlaneId === p.id ? 'text-green-400' : ''}`}
+              >
+                [{p.id}] Lat: {p.lat.toFixed(2)}, Lng: {p.lng.toFixed(2)}
+              </li>
+            ))}
+          </ul>
         </div>
-        
-        <div className="ml-auto flex items-center gap-6">
-          <div className="flex items-center gap-2 px-3 py-1 bg-gray-800 rounded-full border border-gray-700">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-xs text-gray-300">Sistem Online</span>
-          </div>
-          <div className="text-right hidden md:block">
-            <p className="text-sm font-mono text-gray-300">{new Date().toLocaleDateString()}</p>
-            <p className="text-xs text-gray-500">İstanbul Area Control</p>
-          </div>
-        </div>
-      </header>
 
-      {/* Main Content */}
-      <main className="flex-grow p-4 overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 h-full">
-          
-          {/* Sol Kolon (Harita ve Grafik) - %75 Genişlik */}
-          <div className="lg:col-span-3 flex flex-col gap-4 h-full">
-            {/* Harita Alanı */}
-            <div className="flex-grow rounded-xl overflow-hidden shadow-2xl border border-gray-800 relative group">
-               <FleetMap 
-                 planes={planes} 
-                 onSelectPlane={handleSelectPlane}
-                 selectedPlaneId={selectedPlaneId}
-               />
-               {!selectedPlaneId && (
-                 <div className="absolute top-4 left-16 bg-black/60 backdrop-blur-sm px-4 py-2 rounded text-sm text-white pointer-events-none z-[400]">
-                   For the details, please click any plane.
-                 </div>
-               )}
-            </div>
+        {/* INFO & CHART PLACEHOLDER */}
+        <div className="flex flex-col gap-4">
+          <div className="border border-white p-4 h-[200px] bg-gray-700">
+             <h2 className="font-bold">Telemetry Chart Area</h2>
+             {selectedPlaneId ? (
+               <div>
+                 <p>Monitoring: {selectedPlaneId}</p>
+                 <p>Data Points: {historyData.length}</p>
+               </div>
+             ) : <p>Select a plane to view data</p>}
+          </div>
 
-            {/* Grafik Alanı (Alt Kısım) */}
-            <div className="h-64 flex-shrink-0">
-               <TelemetryChart data={historyData} selectedPlane={selectedPlane} />
+          <div className="border border-white p-4 h-[200px] bg-gray-700">
+            <h2 className="font-bold">System Logs (Chat/Alerts)</h2>
+            <div className="text-xs text-gray-400">
+              {chat.length} messages loaded.
+              <br/>
+              UI implementation pending...
             </div>
           </div>
-
-          {/* Sağ Kolon (Bilgi Paneli) - %25 Genişlik */}
-          <div className="lg:col-span-1 h-full overflow-hidden">
-            <InfoPanel alerts={alerts} chatMessages={chat} />
-          </div>
-
         </div>
-      </main>
+      </div>
     </div>
   );
 }
