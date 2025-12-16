@@ -7,8 +7,8 @@ spec:
   project: default
   source:
     repoURL: https://github.com/peler1nl1kelt0s/fleet-tracking-system.git
-    targetRevision: HEAD
-    path: k3s/configs
+    targetRevision: dev
+    path: k3s
   destination:
     server: https://kubernetes.default.svc
     namespace: dev
@@ -16,3 +16,5 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

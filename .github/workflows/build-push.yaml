@@ -2,10 +2,11 @@ name: Build and Push Docker Images
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "dev" ]
     paths:
-      - 'apps/**'
-      - '.github/workflows/build-push.yml'
+      - 'back-end/**'
+      - 'front-end/fleet-tracking-system/**'
+      - '.github/workflows/build-push.yaml'
 
 env:
   REGISTRY: ghcr.io
@@ -28,7 +29,7 @@ jobs:
         with:
           filters: |
             backend:
-              - 'apps/backend/**'
+              - 'back-end/**'
 
       - name: Log in to GitHub Container Registry
         if: steps.backend-changed.outputs.backend == 'true'
@@ -42,7 +43,7 @@ jobs:
         if: steps.backend-changed.outputs.backend == 'true'
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/backend
+          context: ./back-end
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ github.event.repository.name }}-backend:latest
@@ -65,7 +66,7 @@ jobs:
         with:
           filters: |
             frontend:
-              - 'apps/frontend/**'
+              - 'front-end/fleet-tracking-system/**'
 
       - name: Log in to GitHub Container Registry
         if: steps.frontend-changed.outputs.frontend == 'true'
@@ -79,7 +80,7 @@ jobs:
         if: steps.frontend-changed.outputs.frontend == 'true'
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/frontend
+          context: ./front-end/fleet-tracking-system
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ github.event.repository.name }}-frontend:latest
