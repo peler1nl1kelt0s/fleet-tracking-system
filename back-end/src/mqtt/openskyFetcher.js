@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import fetch from 'node-fetch';
 import mqtt from 'mqtt';
 
@@ -49,13 +50,14 @@ function replayEverySecond() {
       icao24,
       callsign,
       origin_country,
-      ,
+      time_position,
       ,
       lon,
       lat,
       altitude,
-      ,
-      speed
+      on_ground,
+      speed,
+      true_track
     ] = state;
 
     const payload = {
@@ -65,7 +67,10 @@ function replayEverySecond() {
       speed,
       altitude,
       callsign: callsign?.trim(),
-      origin_country
+      origin_country,
+      time_position,
+      on_ground,
+      true_track
     };
 
     client.publish(
