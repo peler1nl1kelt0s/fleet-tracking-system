@@ -15,5 +15,8 @@ server.listen(PORT, async () => {
   await import('./mqtt/broker.js');
   await import('./mqtt/mqttClient.js');
   await import('./mqtt/openskyFetcher.js');
+
+  const { startWorker } = await import('./worker/telemetryProcessor.js');
+  startWorker();
 });
 
