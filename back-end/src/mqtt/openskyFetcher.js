@@ -1,5 +1,10 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import fetch from 'node-fetch';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.join(__dirname, '../../../.env') });
 import mqtt from 'mqtt';
 
 if (!process.env.MQTT_BROKER_URL) {
@@ -35,7 +40,7 @@ client.on('close', () => {
 
 async function fetchOpenSky() {
   try {
-    console.log('OpenSky fetch...');
+    // console.log('OpenSky fetch...');
 
     const url =
       `${process.env.OPENSKY_BASE_URL}` +
@@ -107,7 +112,7 @@ function replayEverySecond() {
   }
 }
 
-setInterval(fetchOpenSky, 10_000);
+setInterval(fetchOpenSky, 20_000);
 
 setInterval(replayEverySecond, 1_000);
 
