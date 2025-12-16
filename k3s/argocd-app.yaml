@@ -3,6 +3,10 @@ kind: Application
 metadata:
   name: fleet-tracking-system
   namespace: argocd
+  annotations:
+    argocd-image-updater.argoproj.io/image-list: frontend=ghcr.io/peler1nl1kelt0s/fleet-tracking-system-frontend:latest,backend=ghcr.io/peler1nl1kelt0s/fleet-tracking-system-backend:latest
+    argocd-image-updater.argoproj.io/frontend.update-strategy: digest
+    argocd-image-updater.argoproj.io/backend.update-strategy: digest
 spec:
   project: default
   source:
