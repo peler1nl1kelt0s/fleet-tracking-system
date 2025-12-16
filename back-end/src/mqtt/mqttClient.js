@@ -1,6 +1,7 @@
 import mqtt from 'mqtt';
 import redis from '../redis/redisClient.js';
 import { processAlerts } from '../alerts/alertEngine.js';
+import { getIO } from '../ws/socket.js';
 import {
   writeToDisk,
   readFromDisk,
@@ -19,6 +20,7 @@ client.on('message', async (topic, message) => {
   const data = JSON.parse(message.toString());
 
   try {
+    getIO().emit('telemetry', data);
     await redis.lpush(
       `telemetry:${aircraftId}`,
       JSON.stringify(data)
