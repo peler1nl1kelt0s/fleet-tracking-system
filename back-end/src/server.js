@@ -19,4 +19,3 @@ server.listen(PORT, async () => {
   const { startWorker } = await import('./worker/telemetryProcessor.js');
   startWorker();
 });
-

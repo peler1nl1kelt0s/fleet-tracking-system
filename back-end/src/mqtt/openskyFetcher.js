@@ -2,6 +2,11 @@ import 'dotenv/config';
 import fetch from 'node-fetch';
 import mqtt from 'mqtt';
 
+if (!process.env.MQTT_BROKER_URL) {
+  console.error('Hata: MQTT_BROKER_URL ortam değişkeni ayarlanmamış.');
+  process.exit(1);
+}
+
 const client = mqtt.connect(process.env.MQTT_BROKER_URL);
 const MQTT_TOPIC_BASE = 'fleet/aircraft';
 
@@ -13,6 +18,20 @@ const BOUNDS = {
 };
 
 let lastStates = [];
+let messageQueue = [];
+client.on('connect', () => {
+  console.log('MQTT Broker bağlantısı başarılı.');
+  while (messageQueue.length > 0) {
+    const { topic, payload } = messageQueue.shift();
+    client.publish(topic, payload, {}, (err) => {
+      if (err) console.error('Kuyruktaki mesaj gönderilemedi:', err);
+    });
+  }
+});
+
+client.on('close', () => {
+  console.warn('MQTT Broker bağlantısı kesildi. Mesajlar kuyruğa alınıyor.');
+});
 
 async function fetchOpenSky() {
   try {
@@ -42,6 +61,14 @@ async function fetchOpenSky() {
   }
 }
 
+function publishOrQueue(topic, payload) {
+  if (client.connected) {
+    client.publish(topic, payload);
+  } else {
+    messageQueue.push({ topic, payload });
+  }
+}
+
 function replayEverySecond() {
   if (lastStates.length === 0) return;
 
@@ -62,6 +89,7 @@ function replayEverySecond() {
 
     const payload = {
       timestamp: Date.now(),
+      icao24,
       lat,
       lng: lon,
       speed,
@@ -73,10 +101,9 @@ function replayEverySecond() {
       true_track
     };
 
-    client.publish(
-      `${MQTT_TOPIC_BASE}/${icao24}/telemetry`,
-      JSON.stringify(payload)
-    );
+    const topic = `${MQTT_TOPIC_BASE}/${icao24}/telemetry`;
+    const payloadString = JSON.stringify(payload);
+    publishOrQueue(topic, payloadString);
   }
 }
 
