@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fleet-tracking-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fleet-tracking-system
+  template:
+    metadata:
+      labels:
+        app: fleet-tracking-system
+    spec:
+      containers:
+      - name: fleet-tracking-system-container
+        image: # BURAYI GITHUB CONTAINER IMAGE ADRESI ILE DEGISTIR
+        ports:
+        - containerPort: 8888
