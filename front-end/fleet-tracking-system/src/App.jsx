@@ -3,7 +3,6 @@ import { Plane } from 'lucide-react';
 import FleetMap from './components/FleetMap';
 import TelemetryChart from './components/TelemetryChart';
 import InfoPanel from './components/InfoPanel';
-import './App.css' 
 
 import { 
   generateInitialPlanes, 
