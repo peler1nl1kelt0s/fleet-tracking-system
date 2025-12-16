@@ -1,12 +1,19 @@
 import 'dotenv/config';
+import http from 'http';
 import app from './app.js';
-import './mqtt/broker.js'; 
-import './mqtt/mqttClient.js';
-import './mqtt/openskyFetcher.js';
-import './ws/socket.js';
+import { initSocket } from './ws/socket.js';
 
 const PORT = process.env.API_PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`Backend running on port ${PORT}`);
+const server = http.createServer(app);
+
+initSocket(server);
+
+server.listen(PORT, async () => {
+  console.log(`🚀 Backend running on port ${PORT}`);
+
+  await import('./mqtt/broker.js');
+  await import('./mqtt/mqttClient.js');
+  await import('./mqtt/openskyFetcher.js');
 });
+

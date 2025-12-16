@@ -11,53 +11,72 @@ const BOUNDS = {
   lomax: 45.0
 };
 
+let lastStates = [];
+
 async function fetchOpenSky() {
   try {
+    console.log('OpenSky fetch...');
+
     const url =
       `${process.env.OPENSKY_BASE_URL}` +
       `?lamin=${BOUNDS.lamin}&lomin=${BOUNDS.lomin}` +
       `&lamax=${BOUNDS.lamax}&lomax=${BOUNDS.lomax}`;
 
     const res = await fetch(url);
-    const json = await res.json();
 
+    if (!res.ok) {
+      console.warn(`OpenSky ${res.status}`);
+      return;
+    }
+
+    const json = await res.json();
     if (!json.states) return;
 
-    json.states.forEach(state => {
-      const [
-        icao24,
-        callsign,
-        origin_country,
-        time_position,
-        last_contact,
-        longitude,
-        latitude,
-        baro_altitude,
-        on_ground,
-        velocity
-      ] = state;
+    lastStates = json.states.filter(s => s[5] && s[6]);
 
-      if (!latitude || !longitude) return;
-
-      const payload = {
-        timestamp: Date.now(),
-        lat: latitude,
-        lng: longitude,
-        speed: velocity,
-        altitude: baro_altitude,
-        callsign,
-        origin_country
-      };
-
-      client.publish(
-        `${MQTT_TOPIC_BASE}/${icao24}/telemetry`,
-        JSON.stringify(payload)
-      );
-    });
+    console.log(`OpenSky updated | aircraft: ${lastStates.length}`);
 
   } catch (err) {
     console.error('OpenSky error:', err.message);
   }
 }
 
-setInterval(fetchOpenSky, 1000);
+function replayEverySecond() {
+  if (lastStates.length === 0) return;
+
+  for (const state of lastStates) {
+    const [
+      icao24,
+      callsign,
+      origin_country,
+      ,
+      ,
+      lon,
+      lat,
+      altitude,
+      ,
+      speed
+    ] = state;
+
+    const payload = {
+      timestamp: Date.now(),
+      lat,
+      lng: lon,
+      speed,
+      altitude,
+      callsign: callsign?.trim(),
+      origin_country
+    };
+
+    client.publish(
+      `${MQTT_TOPIC_BASE}/${icao24}/telemetry`,
+      JSON.stringify(payload)
+    );
+  }
+}
+
+setInterval(fetchOpenSky, 10_000);
+
+setInterval(replayEverySecond, 1_000);
+
+fetchOpenSky();

@@ -1,11 +1,22 @@
 import { Server } from 'socket.io';
 
-const io = new Server(process.env.WS_PORT, {
-  cors: {
-    origin: '*'
+let io;
+
+export function initSocket(server) {
+  io = new Server(server, {
+    cors: {
+      origin: '*',
+      methods: ['GET', 'POST']
+    }
+  });
+
+  console.log('✅ Socket.IO initialized');
+  return io;
+}
+
+export function getIO() {
+  if (!io) {
+    throw new Error('❌ Socket.IO not initialized');
   }
-});
-
-console.log('WebSocket running on port 3001');
-
-export default io;
+  return io;
+}
