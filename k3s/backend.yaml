@@ -21,7 +21,6 @@ spec:
         ports:
         - containerPort: 3000
         env:
-        env:
         - name: API_PORT
           value: "3000"
         - name: WS_PORT
