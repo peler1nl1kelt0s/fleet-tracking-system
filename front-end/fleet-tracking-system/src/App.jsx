@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Plane } from 'lucide-react';
+import { io } from 'socket.io-client';
 import FleetMap from './components/FleetMap';
 import TelemetryChart from './components/TelemetryChart';
 import InfoPanel from './components/InfoPanel';
 
 import { 
-  generateInitialPlanes, 
-  updatePlanePositions, 
   generateTelemetryHistory, 
   chatMessages as initialChat,
   alertTypes
@@ -19,29 +18,90 @@ function App() {
   const [alerts, setAlerts] = useState([]);
   const [chat, setChat] = useState(initialChat);
 
-  useEffect(() => {
-    setPlanes(generateInitialPlanes(30));
-  }, []);
+  const selectedPlaneIdRef = useRef(selectedPlaneId);
 
   useEffect(() => {
-    const interval = setInterval(() => {
-      setPlanes(currentPlanes => updatePlanePositions(currentPlanes));
-      if (selectedPlaneId) {
-        setHistoryData(prev => {
-          const last = prev[prev.length - 1];
-          const newPoint = {
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            speed: last ? last.speed + (Math.random() * 20 - 10) : 800,
-            altitude: last ? last.altitude + (Math.random() * 100 - 50) : 30000
-          };
-          return [...prev.slice(1), newPoint];
-        });
-      }
-    }, 1000);
-    return () => clearInterval(interval);
+    selectedPlaneIdRef.current = selectedPlaneId;
   }, [selectedPlaneId]);
 
-// Random sit. simulation (Warns ve And Chat)
+  useEffect(() => {
+    const socket = io('http://localhost:3000', {
+      withCredentials: true
+    });
+
+    socket.on('connect', () => {
+      console.log('✅ Connected to backend');
+    });
+
+    socket.on('telemetry', (data) => {
+      setPlanes(prev => {
+        const index = prev.findIndex(p => p.id === data.aircraftId);
+        if (index > -1) {
+          const oldPlane = prev[index];
+          // Simple heading calculation
+          let newHeading = oldPlane.heading;
+          if (data.lat !== oldPlane.lat || data.lng !== oldPlane.lng) {
+             const dLon = (data.lng - oldPlane.lng);
+             const y = Math.sin(dLon) * Math.cos(data.lat);
+             const x = Math.cos(oldPlane.lat) * Math.sin(data.lat) - Math.sin(oldPlane.lat) * Math.cos(data.lat) * Math.cos(dLon);
+             const brng = Math.atan2(y, x) * 180 / Math.PI;
+             // This calculation is rough for small diffs but better than 0.
+             // Actually, for very small updates, keeping old heading is safer to avoid jitter.
+             // Let's just use data.heading if backend sends it, else keep old.
+          }
+
+          const updatedPlane = {
+            ...oldPlane,
+            lat: data.lat,
+            lng: data.lng,
+            speed: data.speed,
+            altitude: data.altitude,
+            // If backend provides heading later, use it. For now maintain old or random.
+            heading: data.heading ?? oldPlane.heading, 
+          };
+
+          const newPlanes = [...prev];
+          newPlanes[index] = updatedPlane;
+          
+          // Update history if selected
+          if (data.aircraftId === selectedPlaneIdRef.current) {
+            setHistoryData(h => {
+               const newPoint = {
+                  time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+                  speed: data.speed,
+                  altitude: data.altitude
+               };
+               return [...h.slice(1), newPoint];
+            });
+          }
+
+          return newPlanes;
+        } else {
+          // New plane
+          return [...prev, {
+            id: data.aircraftId,
+            callsign: data.callsign || 'N/A',
+            lat: data.lat,
+            lng: data.lng,
+            speed: data.speed,
+            altitude: data.altitude,
+            type: 'Unknown',
+            heading: Math.floor(Math.random() * 360) // Initial random heading
+          }];
+        }
+      });
+    });
+
+    socket.on('alert', (alert) => {
+      setAlerts(prev => [alert, ...prev].slice(0, 50));
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+// Random sit. simulation (Chat only)
   useEffect(() => {
     const interval = setInterval(() => {
       const rand = Math.random();
@@ -54,12 +114,6 @@ function App() {
           timestamp: new Date()
         };
         setChat(prev => [...prev, newMsg]);
-      }
-      
-      // %20 chances to new warning
-      if (rand > 0.8) {
-        const randomAlert = alertTypes[Math.floor(Math.random() * alertTypes.length)];
-        setAlerts(prev => [randomAlert, ...prev].slice(0, 50)); // Keep the last 50 alerts
       }
     }, 3000);
     return () => clearInterval(interval);
