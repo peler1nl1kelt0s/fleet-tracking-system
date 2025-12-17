@@ -9,16 +9,14 @@ const createPlaneIcon = (heading) => {
   return L.divIcon({
     className: 'custom-plane-icon',
     html: `<div style="transform: rotate(${heading}deg); width: 32px; height: 32px; display: flex; justify-content: center; align-items: center;">
-      <svg viewBox="0 0 24 24" fill="#3b82f6" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" width="32" height="32">
-        <path d="M2 12h20 M12 2l10 10-10 10" transform="rotate(-45 12 12)" />
-        <path d="M12 2 L22 12 L12 22 M2 12 L22 12" opacity="0"/> 
-        <path d="M22 2L2 22" stroke="none" fill="none"/>
-        <polygon points="12 2 20 20 12 16 4 20 12 2" /> 
+      <!-- Main Plane Body -->
+      <svg viewBox="0 0 512 512" width="32" height="32" fill="#3b82f6" stroke="white" stroke-width="15" style="filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));">
+         <path d="M428.3 331.3l-28-56.9L262.8 191.1v-88.7c0-23.7-19.1-42.9-42.8-42.9-23.7 0-42.8 19.1-42.8 42.9v88.7L40.1 274.4l-28 56.9c-2.4 4.9-1.3 10.9 2.6 14.8 3.9 3.9 9.9 5.2 14.8 2.6L164.8 288v94.8l-37.4 37.4c-4 4-5.2 10.1-2.9 15.2 2.3 5.2 7.4 8.5 13.1 8.5h164.9c5.6 0 10.8-3.3 13.1-8.5 2.3-5.2 1.1-11.2-2.9-15.2L275.2 382.8V288l135.3 60.7c4.9 2.6 10.9 1.3 14.8-2.6 3.9-4.1 5-10 2.6-14.8z"/>
       </svg>
     </div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
-    popupAnchor: [0, -10],
+    popupAnchor: [0, -16],
   });
 };
 
