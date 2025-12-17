@@ -34,17 +34,19 @@ let BOUNDS = systemConfig.bounds || {
   lamax: 42.5,
   lomax: 45.0
 };
-// Fetch from API every 10 seconds to respect rate limits
+// Fetch from API every 10 seconds
 const FETCH_INTERVAL = 10000;
+const AIRCRAFT_TTL = 300000; // 5 minutes in ms
 
 // Refresh config periodically
 setInterval(() => {
   systemConfig = getSystemConfig();
   if (systemConfig.bounds) BOUNDS = systemConfig.bounds;
-  // Note: we ignore systemConfig.apiRefreshRate to enforce 10s for OpenSky friendliness
 }, 10000);
 
-let lastStates = []; // Array of { ...stateData, lastUpdated: timestamp }
+// Map<icao24, AircraftObject>
+// AircraftObject: { ...data, lastDataUpdate: timestamp, lastInterpolation: timestamp }
+let aircraftMap = new Map();
 let messageQueue = [];
 
 client.on('connect', () => {
@@ -124,57 +126,53 @@ async function fetchOpenSky() {
         console.log('Token geçersiz veya yetkisiz, tokenı sıfırlıyorum...');
         accessToken = null; // Force refresh next time
       }
-      return;
+      return; // If fetch fails, we simply return. Mapping logic handles persistence.
     }
 
     const json = await res.json();
     if (!json.states) return;
 
-    // We only take valid states
-    const newStates = json.states.filter(s => s[5] && s[6]).map(s => {
-      // Convert raw array to object for easier handling
-      const [
-        icao24,
-        callsign,
-        origin_country,
-        time_position,
-        last_contact,
-        lon,
-        lat,
-        altitude,
-        on_ground,
-        speed,
-        true_track,
-        vertical_rate,
-        sensors,
-        geo_altitude,
-        squawk,
-        spi,
-        position_source
-      ] = s;
+    const now = Date.now();
 
-      return {
-        icao24,
-        callsign: callsign?.trim(),
-        origin_country,
-        time_position,
-        lon,
-        lat,
-        altitude,
-        on_ground,
-        speed,
-        true_track,
-        squawk,
-        // Internal tracking for interpolation
-        lastUpdated: Date.now()
+    // Process new states
+    json.states.forEach(s => {
+      const icao24 = s[0];
+      // Check if we already have this aircraft
+      const existing = aircraftMap.get(icao24);
+
+      const raw = {
+        icao24: s[0],
+        callsign: s[1]?.trim(),
+        origin_country: s[2],
+        time_position: s[3],
+        last_contact: s[4],
+        lon: s[5],
+        lat: s[6],
+        // Defaults if null: use existing if available, or reasonably safe defaults
+        altitude: s[7] ?? existing?.altitude ?? 0,
+        on_ground: s[8],
+        speed: s[9] ?? existing?.speed ?? 0,
+        true_track: s[10] ?? existing?.true_track ?? 0,
+        vertical_rate: s[11],
+        squawk: s[14],
+        lastDataUpdate: now,
+        lastInterpolation: now
       };
+
+      // If tracking missing/invalid on ground, use defaults?
+      // Actually 0 speed is fine for ground. But for air, we might want to keep last speed if null?
+
+      aircraftMap.set(icao24, raw);
     });
 
-    // Update global state, but merge if we want to keep some smoothness? 
-    // Actually, straight replace is safer to avoid ghosts.
-    lastStates = newStates;
+    // Cleanup Stale Aircraft
+    for (const [key, val] of aircraftMap.entries()) {
+      if (now - val.lastDataUpdate > AIRCRAFT_TTL) {
+        aircraftMap.delete(key);
+      }
+    }
 
-    console.log(`OpenSky updated | aircraft: ${lastStates.length}`);
+    console.log(`OpenSky updated | Active aircraft: ${aircraftMap.size}`);
 
   } catch (err) {
     console.error('OpenSky error:', err.message);
@@ -223,21 +221,16 @@ function calculateNextPosition(lat, lon, speed, heading, timeDelta) {
 }
 
 function processAndInterpolate() {
-  if (lastStates.length === 0) return;
+  if (aircraftMap.size === 0) return;
 
   const now = Date.now();
 
-  for (let i = 0; i < lastStates.length; i++) {
-    const aircraft = lastStates[i];
+  for (const aircraft of aircraftMap.values()) {
 
-    // Calculate time since last update in seconds
-    // Since we run this loop every 1s, we arguably just advance 1s worth of distance.
-    // However, tracking real elapsed time is robust against loop drift.
-    // Ideally we update 'aircraft.lastUpdated' after calculation.
+    // Time since last *interpolation step*
+    const timeDelta = (now - aircraft.lastInterpolation) / 1000;
 
-    const timeDelta = (now - aircraft.lastUpdated) / 1000;
-
-    // Only interpolate if airborne and moving
+    // Dead Reckoning if airborne and moving
     if (!aircraft.on_ground && aircraft.speed > 0) {
       const { lat, lon } = calculateNextPosition(
         aircraft.lat,
@@ -246,14 +239,11 @@ function processAndInterpolate() {
         aircraft.true_track,
         timeDelta
       );
-
-      // Update state in memory
       aircraft.lat = lat;
       aircraft.lon = lon;
     }
 
-    // Reset timestamp so next loop calculates 1s delta approx
-    aircraft.lastUpdated = now;
+    aircraft.lastInterpolation = now;
 
     const payload = {
       timestamp: now,
@@ -264,7 +254,7 @@ function processAndInterpolate() {
       altitude: aircraft.altitude,
       callsign: aircraft.callsign,
       origin_country: aircraft.origin_country,
-      time_position: aircraft.time_position, // Keep original source time? Or update? usually source time.
+      time_position: aircraft.time_position,
       on_ground: aircraft.on_ground,
       true_track: aircraft.true_track,
       squawk: aircraft.squawk
@@ -279,7 +269,7 @@ function processAndInterpolate() {
 // Loop OpenSky Fetch every 10 seconds
 setInterval(fetchOpenSky, FETCH_INTERVAL);
 
-// Loop Interpolation & Publish every 1 second (1000ms)
+// Loop Interpolation & Publish every 1 second
 setInterval(processAndInterpolate, 1000);
 
 // Initial Fetch

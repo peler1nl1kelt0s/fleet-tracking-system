@@ -11,12 +11,12 @@ let alertConfig = {
 
   },
   speed_threshold: {
-    enabled: false,
-    max_speed_kmh: 950
+    enabled: true,
+    max_speed_kmh: 850
   },
   altitude_threshold: {
-    enabled: false,
-    min_altitude_ft: 1000
+    enabled: true,
+    min_altitude_ft: 3000
   }
 };
 
