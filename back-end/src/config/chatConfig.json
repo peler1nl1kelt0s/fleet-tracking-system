@@ -1,0 +1,29 @@
+[
+  {
+    "id": "takeoff",
+    "trigger": "Take-off",
+    "messages": [
+      { "text": "Tekerlekler yerden kesildi! Tırmanış başladı.", "lang": "tr" },
+      { "text": "Wheels up! Climbing now.", "lang": "en" }
+    ],
+    "squawkRules": []
+  },
+  {
+    "id": "landing",
+    "trigger": "Landing",
+    "messages": [
+      { "text": "İniş takımları açıldı, yaklaşma tamamlanıyor.", "lang": "tr" },
+      { "text": "Gear down, final approach.", "lang": "en" }
+    ],
+    "squawkRules": []
+  },
+  {
+    "id": "emergency",
+    "trigger": "Squawk 7700",
+    "messages": [
+      { "text": "ACİL DURUM SİNYALİ ALINDI!", "lang": "tr", "isAlert": true },
+      { "text": "EMERGENCY SIGNAL RECEIVED!", "lang": "en", "isAlert": true }
+    ],
+    "squawkRules": ["7700"]
+  }
+]
