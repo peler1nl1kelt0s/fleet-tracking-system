@@ -45,6 +45,7 @@ CREATE TABLE telemetry (
     temperature DOUBLE PRECISION,
     engine_status VARCHAR(20), -- on, off, idle
     fuel_level DOUBLE PRECISION,
+    on_ground BOOLEAN DEFAULT TRUE,
     metadata JSONB -- For extra sensors
 );
 
