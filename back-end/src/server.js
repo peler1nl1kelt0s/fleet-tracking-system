@@ -36,24 +36,7 @@ try {
   // --- Admin API Routes ---
   // Ideally these should be in a router file, but placing here for task simplicity as requested
   
-  // Announcements
-  app.post('/api/admin/announcements', express.json(), (req, res) => {
-    const { message } = req.body;
-    if (!message) return res.status(400).json({ error: 'Message required' });
-    
-    const io = getIO();
-    const announcement = {
-      message,
-      timestamp: Date.now(),
-      sender: 'ADMIN'
-    };
-    
-    // Broadcast to all connected clients
-    io.emit('announcement', announcement);
-    console.log('[Admin] Announcement broadcasted:', message);
-    
-    res.json({ status: 'success', data: announcement });
-  });
+
 
   // Squawk Codes
   app.get('/api/admin/squawk-codes', (req, res) => {

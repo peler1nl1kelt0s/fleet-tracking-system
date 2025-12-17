@@ -156,12 +156,68 @@ app.get('/api/admin/stats', async (req, res) => {
 app.get('/api/telemetry/:aircraftId', async (req, res) => {
   try {
     const { aircraftId } = req.params;
-    const limit = parseInt(req.query.limit) || 50;
+    // Default: Last 30 mins (1800s), sampled every 5 mins (300s)
+    const reqDuration = parseInt(req.query.duration) || 1800; 
+    const reqStep = parseInt(req.query.step) || 300;
     
-    const rawData = await redis.lrange(`telemetry:${aircraftId}`, 0, limit - 1);
-    const data = rawData.map(item => JSON.parse(item));
-    
-    res.json(data);
+    // Fetch ample data for the primary request (and fallback which is shorter)
+    // Estimate: 1800s -> ~2000 points max.
+    const rawData = await redis.lrange(`telemetry:${aircraftId}`, 0, 2500);
+    const allData = rawData.map(item => JSON.parse(item));
+
+    const sampleData = (sourceData, duration, step) => {
+      // Find the latest timestamp in the source data to anchor our window
+      let maxTime = 0;
+      for (const d of sourceData) {
+         const t = d.timestamp || (d.time_position ? d.time_position * 1000 : 0);
+         if (t > maxTime) maxTime = t;
+      }
+      
+      // If no data, return empty
+      if (maxTime === 0) return [];
+      
+      // Anchor window to the latest data point
+      const endTime = maxTime;
+      const startTime = endTime - (duration * 1000);
+
+      const filtered = sourceData.filter(d => {
+        const t = d.timestamp || (d.time_position ? d.time_position * 1000 : null);
+        return t && t >= startTime && t <= endTime;
+      });
+
+      // Sort Oldest -> Newest
+      filtered.sort((a, b) => {
+        const ta = a.timestamp || a.time_position * 1000;
+        const tb = b.timestamp || b.time_position * 1000;
+        return ta - tb;
+      });
+
+      const sampled = [];
+      let lastBucketTime = 0;
+
+      for (const point of filtered) {
+        const t = point.timestamp || point.time_position * 1000;
+        // If first point or crossed step threshold
+        if (sampled.length === 0 || t - lastBucketTime >= step * 1000) {
+          sampled.push(point);
+          lastBucketTime = t;
+        }
+      }
+      return sampled;
+    };
+
+    // 1. Try Requested Strategy
+    let result = sampleData(allData, reqDuration, reqStep);
+
+    // 2. Fallback Strategy: If < 2 points, try 10 mins (600s) / 1 min (60s)
+    if (result.length < 2) {
+      // console.log(`Fallback for ${aircraftId}: 10m/1m`);
+      result = sampleData(allData, 600, 60);
+    }
+
+    // Return Newest First
+    res.json(result.reverse());
+
   } catch (error) {
     res.status(500).json({ message: 'Telemetri verisi alınamadı.', error: error.message });
   }
