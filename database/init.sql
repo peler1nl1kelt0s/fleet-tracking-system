@@ -24,6 +24,7 @@ CREATE TABLE vehicle_groups (
 CREATE TABLE vehicles (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     plate_number VARCHAR(20) UNIQUE NOT NULL,
+    icao24 VARCHAR(24) UNIQUE,
     vehicle_type VARCHAR(50),
     group_id UUID REFERENCES vehicle_groups(id) ON DELETE SET NULL,
     status VARCHAR(20) DEFAULT 'active', -- active, maintenance, inactive
