@@ -1,0 +1,16 @@
+{
+  "apiRefreshRate": 20000,
+  "apiKeys": [
+    "default-key"
+  ],
+  "bounds": {
+    "lamin": 35.5,
+    "lomin": 25.0,
+    "lamax": 42.5,
+    "lomax": 45.0
+  },
+  "filters": {
+    "hideAircraftTypes": ["GLID", "HELICOPTER"],
+    "minAltitude": 0
+  }
+}

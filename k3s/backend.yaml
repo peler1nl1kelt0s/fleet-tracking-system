@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: backend
-        image: ghcr.io/peler1nl1kelt0s/fleet-tracking-system-backend:552424cb0316cbe50c69bfd4d861518c2f77486c
+        image: ghcr.io/peler1nl1kelt0s/fleet-tracking-system-backend:a8bf7c046bfd9ad09546f0f50dbd10196a981f01
         imagePullPolicy: Always
         ports:
         - containerPort: 3000
@@ -35,11 +35,32 @@ spec:
         - name: WS_PORT
           value: "3001"
         - name: MQTT_BROKER_URL
-          value: "mqtt://mosquitto:1883" 
+          value: "mqtt://localhost:1883" 
         - name: OPENSKY_BASE_URL
           value: "https://opensky-network.org/api/states/all"
         - name: REDIS_URL
           value: "redis://redis:6379"
+        - name: POSTGRES_HOST
+          value: "postgres.dev.svc.cluster.local"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_DB
+          value: "fleet_tracking"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: postgres-password
+        - name: POSTGRES_PORT
+          value: "5432"
+        volumeMounts:
+        - mountPath: /app/src
+          name: source-code
+      volumes:
+      - name: source-code
+        hostPath:
+          path: /home/peler1nl1kelt0s/Desktop/fleet-tracking-system/back-end/src
+          type: Directory
 ---
 apiVersion: v1
 kind: Service

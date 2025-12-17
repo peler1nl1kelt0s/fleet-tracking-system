@@ -28,17 +28,65 @@ subjects:
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: alertmanager-config
+  namespace: monitoring
+data:
+  alertmanager.yml: |
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: ['alertname']
+      group_wait: 10s
+      group_interval: 10s
+      repeat_interval: 1h
+      receiver: 'web.hook'
+    receivers:
+    - name: 'web.hook'
+      webhook_configs:
+      - url: 'http://127.0.0.1:5001/'
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
   name: prometheus-config
   namespace: monitoring
 data:
+  alert.rules: |
+    groups:
+    - name: devops
+      rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Instance {{ $labels.instance }} down"
+          description: "{{ $labels.instance }} of job {{ $labels.job }} has been down for more than 1 minute."
+
   prometheus.yml: |
     global:
-      scrape_interval: 30s 
-      evaluation_interval: 30s
+      scrape_interval: 15s 
+      evaluation_interval: 15s
+      
+    rule_files:
+      - /etc/prometheus/alert.rules
+
+    alerting:
+      alertmanagers:
+      - static_configs:
+        - targets:
+          - alertmanager:9093
+
     scrape_configs:
       - job_name: 'prometheus'
         static_configs:
           - targets: ['localhost:9090']
+
+      - job_name: 'postgres-exporter'
+        static_configs:
+          - targets: ['postgres-exporter.dev.svc.cluster.local:9187']
+
       - job_name: 'kubernetes-pods'
         kubernetes_sd_configs:
         - role: pod
@@ -61,9 +109,52 @@ data:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: alertmanager
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager
+  template:
+    metadata:
+      labels:
+        app: alertmanager
+    spec:
+      containers:
+      - name: alertmanager
+        image: prom/alertmanager:v0.25.0
+        args:
+          - "--config.file=/etc/alertmanager/alertmanager.yml"
+        ports:
+        - containerPort: 9093
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/alertmanager/
+      volumes:
+      - name: config-volume
+        configMap:
+          name: alertmanager-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: alertmanager
+  namespace: monitoring
+spec:
+  selector:
+    app: alertmanager
+  ports:
+    - port: 9093
+      targetPort: 9093
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
   name: prometheus
   namespace: monitoring
 spec:
+  serviceName: prometheus
   replicas: 1
   selector:
     matchLabels:
@@ -82,24 +173,23 @@ spec:
           - "--storage.tsdb.retention.time=24h"
         ports:
         - containerPort: 9090
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
         volumeMounts:
         - name: config-volume
           mountPath: /etc/prometheus/
-        - name: storage-volume
+        - name: prometheus-storage
           mountPath: /prometheus
       volumes:
       - name: config-volume
         configMap:
           name: prometheus-config
-      - name: storage-volume
-        emptyDir: {}
+  volumeClaimTemplates:
+  - metadata:
+      name: prometheus-storage
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      resources:
+        requests:
+          storage: 2Gi
 ---
 apiVersion: v1
 kind: Service
@@ -113,6 +203,28 @@ spec:
     - port: 9090
       targetPort: 9090
   type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasources
+  namespace: monitoring
+data:
+  prometheus.yaml: |-
+    {
+        "apiVersion": 1,
+        "datasources": [
+            {
+               "access":"proxy",
+                "editable": true,
+                "name": "Prometheus",
+                "orgId": 1,
+                "type": "prometheus",
+                "url": "http://prometheus:9090",
+                "version": 1
+            }
+        ]
+    }
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -139,6 +251,10 @@ spec:
           value: "admin"
         - name: GF_SERVER_HTTP_PORT
           value: "3100"
+        - name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "true"
+        - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+          value: "Admin"
         resources:
           requests:
             memory: "64Mi"
@@ -146,6 +262,17 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "300m"
+        volumeMounts:
+          - name: grafana-storage
+            mountPath: /var/lib/grafana
+          - name: grafana-datasources
+            mountPath: /etc/grafana/provisioning/datasources
+      volumes:
+        - name: grafana-storage
+          emptyDir: {}
+        - name: grafana-datasources
+          configMap:
+              name: grafana-datasources
 ---
 apiVersion: v1
 kind: Service
