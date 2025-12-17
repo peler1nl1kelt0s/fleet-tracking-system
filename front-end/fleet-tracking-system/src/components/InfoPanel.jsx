@@ -22,17 +22,26 @@ const InfoPanel = ({ alerts, chatMessages }) => {
           {alerts.length === 0 ? (
             <div className="text-[var(--text-muted)] text-xs text-center py-4">No active alerts</div>
           ) : (
-            alerts.map((alert, idx) => (
-              <div key={idx} className={`p-2 rounded border-l-2 text-xs border-[var(--border-color)] bg-[var(--bg-primary)]`}>
-                {/* Simplified styling to avoid complex tertiary logic in pure vars for now */}
-                <div className="flex justify-between items-start gap-2">
-                  <span className="font-medium text-[var(--text-primary)]">{alert.message}</span>
-                  <span className="text-[10px] opacity-70 whitespace-nowrap text-[var(--text-muted)]">
-                    {new Date(alert.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
+            alerts.map((alert, idx) => {
+              const isCritical = /EMERGENCY|HIJACK|7700|7500/.test(alert.message?.toUpperCase());
+              
+              return (
+                <div key={idx} className={`p-2 rounded border-l-4 text-xs ${
+                  isCritical 
+                    ? 'border-red-600 bg-red-500/10' 
+                    : 'border-[var(--border-color)] bg-[var(--bg-primary)]'
+                }`}>
+                  <div className="flex justify-between items-start gap-2">
+                    <span className={`font-medium ${isCritical ? 'text-red-500 font-bold uppercase animate-pulse' : 'text-[var(--text-primary)]'}`}>
+                      {alert.message}
+                    </span>
+                    <span className="text-[10px] opacity-70 whitespace-nowrap text-[var(--text-muted)]">
+                      {new Date(alert.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
