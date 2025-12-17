@@ -16,6 +16,14 @@ if (!process.env.MQTT_BROKER_URL) {
 const client = mqtt.connect(process.env.MQTT_BROKER_URL);
 const MQTT_TOPIC_BASE = 'fleet/aircraft';
 
+// OpenSky Auth Configuration
+const OPENSKY_AUTH_URL = 'https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token';
+const CLIENT_ID = process.env.OPENSKY_CLIENT_ID;
+const CLIENT_SECRET = process.env.OPENSKY_CLIENT_SECRET;
+
+let accessToken = null;
+let tokenExpiry = 0;
+
 // Initial Load
 let systemConfig = getSystemConfig();
 
@@ -51,8 +59,51 @@ client.on('close', () => {
   console.warn('MQTT Broker bağlantısı kesildi. Mesajlar kuyruğa alınıyor.');
 });
 
+async function getAccessToken() {
+  // Return cached token if valid (with 60s buffer)
+  if (accessToken && Date.now() < tokenExpiry - 60000) {
+    return accessToken;
+  }
+
+  if (!CLIENT_ID || !CLIENT_SECRET) {
+    console.warn('OPENSKY_CLIENT_ID veya OPENSKY_CLIENT_SECRET eksik. Anonim erişim deneniyor (kısıtlı).');
+    return null;
+  }
+
+  try {
+    const params = new URLSearchParams();
+    params.append('grant_type', 'client_credentials');
+    params.append('client_id', CLIENT_ID);
+    params.append('client_secret', CLIENT_SECRET);
+
+    const res = await fetch(OPENSKY_AUTH_URL, {
+      method: 'POST',
+      body: params
+    });
+
+    if (!res.ok) {
+      console.error(`OpenSky Auth Failed: ${res.status} ${res.statusText}`);
+      const text = await res.text();
+      console.error('Response:', text);
+      return null;
+    }
+
+    const data = await res.json();
+    accessToken = data.access_token;
+    // expires_in is in seconds, convert to ms and set absolute expiry time
+    tokenExpiry = Date.now() + (data.expires_in * 1000);
+    console.log('OpenSky Access Token başarıyla alındı.');
+    return accessToken;
+  } catch (error) {
+    console.error('OpenSky Token Hatası:', error);
+    return null;
+  }
+}
+
 async function fetchOpenSky() {
   try {
+    const token = await getAccessToken();
+
     // console.log('OpenSky fetch...');
 
     const url =
@@ -60,10 +111,19 @@ async function fetchOpenSky() {
       `?lamin=${BOUNDS.lamin}&lomin=${BOUNDS.lomin}` +
       `&lamax=${BOUNDS.lamax}&lomax=${BOUNDS.lomax}`;
 
-    const res = await fetch(url);
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(url, { headers });
 
     if (!res.ok) {
-      console.warn(`OpenSky ${res.status}`);
+      console.warn(`OpenSky ${res.status} - ${res.statusText}`);
+      if (res.status === 401 || res.status === 403) {
+        console.log('Token geçersiz veya yetkisiz, tokenı sıfırlıyorum...');
+        accessToken = null; // Force refresh next time
+      }
       return;
     }
 

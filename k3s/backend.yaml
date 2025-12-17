@@ -35,9 +35,19 @@ spec:
         - name: WS_PORT
           value: "3001"
         - name: MQTT_BROKER_URL
-          value: "mqtt://localhost:1883" 
+          value: "mqtt://localhost:1883"
         - name: OPENSKY_BASE_URL
           value: "https://opensky-network.org/api/states/all"
+        - name: OPENSKY_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: opensky-secret
+              key: client-id
+        - name: OPENSKY_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: opensky-secret
+              key: client-secret
         - name: REDIS_URL
           value: "redis://redis:6379"
         - name: POSTGRES_HOST
