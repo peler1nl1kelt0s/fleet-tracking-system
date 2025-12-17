@@ -4,67 +4,61 @@ import { MessageSquare, AlertTriangle, Activity } from 'lucide-react';
 const InfoPanel = ({ alerts, chatMessages }) => {
   const chatEndRef = useRef(null);
 
-  // Auto-Scroll
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
   return (
-    <div className="grid grid-rows-2 gap-4 h-full">
-      
-      {/* Live Warns */}
-      <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 flex flex-col shadow-lg overflow-hidden">
-        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-700">
-          <AlertTriangle className="text-amber-500" size={20} />
-          <h2 className="text-lg font-bold text-white">Live Warns</h2>
-          <span className="ml-auto flex h-3 w-3 relative">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-          </span>
+    <div className="flex flex-col gap-4 h-full">
+
+      {/* Alerts Section */}
+      <div className="flex-1 min-h-[200px] flex flex-col">
+        <div className="flex items-center gap-2 mb-2">
+          <AlertTriangle className="text-[var(--warning-color)]" size={16} />
+          <h2 className="text-sm font-semibold text-[var(--text-secondary)]">System Alerts</h2>
         </div>
-        
-        <div className="overflow-y-auto pr-2 space-y-2 flex-grow custom-scrollbar">
-          {alerts.map((alert, idx) => (
-            <div key={idx} className={`p-3 rounded-md border-l-4 ${
-              alert.type === 'critical' ? 'bg-red-900/20 border-red-500 text-red-200' :
-              alert.type === 'warning' ? 'bg-amber-900/20 border-amber-500 text-amber-200' :
-              'bg-blue-900/20 border-blue-500 text-blue-200'
-            }`}>
-              <div className="flex justify-between items-start">
-                <span className="font-medium text-sm">{alert.message}</span>
-                <span className="text-xs opacity-70 whitespace-nowrap ml-2">
-                  {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                </span>
+
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar bg-[var(--bg-tertiary)] rounded-lg p-2 border border-[var(--border-color)]">
+          {alerts.length === 0 ? (
+            <div className="text-[var(--text-muted)] text-xs text-center py-4">No active alerts</div>
+          ) : (
+            alerts.map((alert, idx) => (
+              <div key={idx} className={`p-2 rounded border-l-2 text-xs border-[var(--border-color)] bg-[var(--bg-primary)]`}>
+                {/* Simplified styling to avoid complex tertiary logic in pure vars for now */}
+                <div className="flex justify-between items-start gap-2">
+                  <span className="font-medium text-[var(--text-primary)]">{alert.message}</span>
+                  <span className="text-[10px] opacity-70 whitespace-nowrap text-[var(--text-muted)]">
+                    {new Date(alert.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))}
-          {alerts.length === 0 && <div className="text-gray-500 text-center py-4">Sistem normal. Uyarı yok.</div>}
+            ))
+          )}
         </div>
       </div>
 
-      {/* Nabız Sohbet */}
-      <div className="bg-gray-900 border border-gray-700 rounded-lg p-4 flex flex-col shadow-lg overflow-hidden">
-        <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-700">
-          <MessageSquare className="text-blue-400" size={20} />
-          <h2 className="text-lg font-bold text-white">Nabız Sohbet</h2>
-          <Activity className="ml-auto text-green-500 animate-pulse" size={16} />
+      {/* Chat/Log Section */}
+      <div className="flex-1 min-h-[250px] flex flex-col">
+        <div className="flex items-center gap-2 mb-2">
+          <MessageSquare className="text-[var(--accent-color)]" size={16} />
+          <h2 className="text-sm font-semibold text-[var(--text-secondary)]">Live Comms</h2>
+          <Activity className="ml-auto text-[var(--success-color)] animate-pulse" size={14} />
         </div>
 
-        <div className="overflow-y-auto pr-2 space-y-3 flex-grow custom-scrollbar">
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar bg-[var(--bg-tertiary)] rounded-lg p-2 border border-[var(--border-color)]">
           {chatMessages.map((msg, idx) => (
             <div key={idx} className="flex flex-col">
-              <div className="flex items-baseline gap-2">
-                <span className={`text-xs font-bold ${
-                  msg.user === 'Kule' ? 'text-yellow-400' : 
-                  msg.user === 'Sistem' ? 'text-red-400' : 'text-blue-400'
-                }`}>
+              <div className="flex items-baseline justify-between">
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${msg.user === 'Kule' ? 'text-[var(--warning-color)]' :
+                    msg.user === 'Sistem' ? 'text-[var(--danger-color)]' : 'text-[var(--accent-color)]'
+                  }`}>
                   {msg.user}
                 </span>
-                <span className="text-[10px] text-gray-500">
-                  {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                <span className="text-[9px] text-[var(--text-muted)]">
+                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <p className="text-sm text-gray-300 bg-gray-800/50 p-2 rounded mt-1">
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5 leading-relaxed">
                 {msg.text}
               </p>
             </div>

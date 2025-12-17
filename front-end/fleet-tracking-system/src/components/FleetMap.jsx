@@ -22,25 +22,36 @@ const createPlaneIcon = (heading) => {
   });
 };
 
-const FleetMap = ({ planes, onSelectPlane, selectedPlaneId }) => {
+const FleetMap = ({ planes, onSelectPlane, selectedPlaneId, theme }) => {
+  const tileUrl = theme === 'dark'
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
+
+  const attribution = theme === 'dark'
+    ? '&copy; <a href="https://carto.com/attributions">CARTO</a>'
+    : '&copy; <a href="https://carto.com/attributions">CARTO</a>';
+
+  const clusterColor = theme === 'dark' ? '#6366f1' : '#3b82f6';
+
   return (
-    <div className="h-full w-full rounded-lg overflow-hidden shadow-lg border border-gray-700 bg-gray-900">
-      <MapContainer 
-        center={[39.0, 35.0]} 
-        zoom={6} 
-        style={{ height: '100%', width: '100%' }}
+    <div className="h-full w-full">
+      <MapContainer
+        center={[39.0, 35.0]}
+        zoom={6}
+        style={{ height: '100%', width: '100%', background: 'var(--bg-tertiary)' }}
         attributionControl={false}
       >
         <TileLayer
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          key={theme} // Force re-render on theme change
+          url={tileUrl}
+          attribution={attribution}
         />
 
         <MarkerClusterGroup
           chunkedLoading
           polygonOptions={{
-            fillColor: '#3b82f6',
-            color: '#3b82f6',
+            fillColor: clusterColor,
+            color: clusterColor,
             weight: 2,
             opacity: 1,
             fillOpacity: 0.5
@@ -56,16 +67,22 @@ const FleetMap = ({ planes, onSelectPlane, selectedPlaneId }) => {
               }}
             >
               <Popup className="glass-popup">
-                <div className="text-gray-800">
-                  <h3 className="font-bold">{plane.callsign}</h3>
-                  <p className="text-sm">Type: {plane.type}</p>
-                  <p className="text-sm">Speed: {plane.speed} km/h</p>
-                  <p className="text-sm">Altitued: {plane.altitude} ft</p>
-                  <button 
+                <div className="p-1" style={{ color: '#1e293b' }}>
+                  <h3 className="font-bold text-base">{plane.callsign}</h3>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs">
+                    <span className="text-gray-500">Type</span>
+                    <span className="font-medium">{plane.type}</span>
+                    <span className="text-gray-500">Speed</span>
+                    <span className="font-medium">{plane.speed} km/h</span>
+                    <span className="text-gray-500">Altitude</span>
+                    <span className="font-medium">{plane.altitude} ft</span>
+                  </div>
+                  <button
                     onClick={() => onSelectPlane(plane)}
-                    className="mt-2 text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition"
+                    className="mt-3 w-full text-xs text-white px-2 py-1.5 rounded transition font-medium"
+                    style={{ backgroundColor: 'var(--accent-color)' }}
                   >
-                    See Details
+                    Track Output
                   </button>
                 </div>
               </Popup>

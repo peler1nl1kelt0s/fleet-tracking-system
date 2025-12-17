@@ -1,8 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
-:root {
-  background-color: #111827; /* Gray 900 */
-  color: #ffffff;
+@layer base {
+  :root {
+    /* Light Mode (Outfit Font) */
+    --font-main: 'Outfit', sans-serif;
+    --bg-primary: #f8fafc; /* Slate 50 */
+    --bg-secondary: #ffffff;
+    --bg-tertiary: #f1f5f9; /* Slate 100 */
+    --border-color: #e2e8f0; /* Slate 200 */
+    --text-primary: #0f172a; /* Slate 900 */
+    --text-secondary: #475569; /* Slate 600 */
+    --text-muted: #94a3b8; /* Slate 400 */
+    --accent-color: #3b82f6; /* Blue 500 */
+    --accent-hover: #2563eb;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --danger-color: #ef4444;
+  }
+
+  .dark {
+    /* Dark Mode (Inter Font) */
+    --font-main: 'Inter', sans-serif;
+    --bg-primary: #09090b; /* Zinc 950 */
+    --bg-secondary: #18181b; /* Zinc 900 */
+    --bg-tertiary: #27272a; /* Zinc 800 */
+    --border-color: #27272a; /* Zinc 800 */
+    --text-primary: #fafafa; /* Zinc 50 */
+    --text-secondary: #a1a1aa; /* Zinc 400 */
+    --text-muted: #52525b; /* Zinc 600 */
+    --accent-color: #6366f1; /* Indigo 500 */
+    --accent-hover: #4f46e5;
+  }
+}
+
+body {
+  font-family: var(--font-main);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s, color 0.3s;
+  overflow: hidden;
 }
 
 /* Map Pop-up Customization */

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Plane } from 'lucide-react';
+import { Plane, Moon, Sun } from 'lucide-react';
 import io from 'socket.io-client';
 import FleetMap from './components/FleetMap';
 import TelemetryChart from './components/TelemetryChart';
 import InfoPanel from './components/InfoPanel';
 
-import { 
+import {
   chatMessages as initialChat
 } from './data/mockData';
 
@@ -18,8 +18,40 @@ function App() {
   const [alerts, setAlerts] = useState([]);
   const [chat, setChat] = useState(initialChat);
   const [isConnected, setIsConnected] = useState(false);
+  const [isSidebarOpen, setSidebarOpen] = useState(true);
+
+  // Theme State
+  const [theme, setTheme] = useState(() => {
+    if (localStorage.getItem('theme')) {
+      return localStorage.getItem('theme');
+    }
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  });
+
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Clock Timer
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const socketRef = useRef(null);
+
+  // Apply Theme
+  useEffect(() => {
+    const root = window.document.documentElement;
+    if (theme === 'dark') {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    localStorage.setItem('theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+  };
 
   useEffect(() => {
     // Socket.IO Connection
@@ -38,7 +70,7 @@ function App() {
     socketRef.current.on('telemetry', (data) => {
       setPlanes(prevPlanes => {
         const index = prevPlanes.findIndex(p => p.id === data.icao24);
-        
+
         const mappedPlane = {
           id: data.icao24,
           callsign: data.callsign || data.icao24,
@@ -47,18 +79,16 @@ function App() {
           heading: data.true_track,
           speed: data.speed || 0,
           altitude: data.altitude || 0,
-          status: 'normal', // Default status
-          type: 'Unknown', // Backend doesn't provide type yet
+          status: 'normal',
+          type: 'Unknown',
           lastUpdate: Date.now()
         };
 
         if (index > -1) {
-          // Update existing
           const newPlanes = [...prevPlanes];
           newPlanes[index] = { ...newPlanes[index], ...mappedPlane };
           return newPlanes;
         } else {
-          // Add new
           return [...prevPlanes, mappedPlane];
         }
       });
@@ -95,7 +125,7 @@ function App() {
           speed: d.speed,
           altitude: d.altitude
         })).reverse(); // API returns newest first (LIFO via lrange 0..N), chart usually L->R time
-        
+
         setHistoryData(mappedHistory);
       })
       .catch(err => console.error("History fetch failed", err));
@@ -109,63 +139,101 @@ function App() {
   const selectedPlane = planes.find(p => p.id === selectedPlaneId);
 
   return (
-    <div className="flex flex-col h-screen bg-gray-950 text-white font-sans overflow-hidden">
-      
-      {/* Header */}
-      <header className="h-16 bg-gray-900 border-b border-gray-800 flex items-center px-4 sm:px-6 shadow-md z-20 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg">
-            <Plane size={24} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-wide">SkyWatcher <span className="text-blue-500">Fleet</span></h1>
-            <p className="text-xs text-gray-400 hidden sm:block">Live Fleet Tracking System v1.0</p>
-          </div>
-        </div>
-        
-        <div className="ml-auto flex items-center gap-4 sm:gap-6">
-          <div className={`flex items-center gap-2 px-3 py-1 rounded-full border ${isConnected ? 'bg-gray-800 border-gray-700' : 'bg-red-900/50 border-red-800'}`}>
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-            <span className="text-xs text-gray-300">{isConnected ? 'Online' : 'Disconnected'}</span>
-          </div>
-          <div className="text-right hidden md:block">
-            <p className="text-sm font-mono text-gray-300">{new Date().toLocaleDateString()}</p>
-            <p className="text-xs text-gray-500">Istanbul ACC</p>
-          </div>
-        </div>
-      </header>
+    <div className="flex h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300 overflow-hidden font-[family-name:var(--font-main)]">
 
-      {/* Main Content */}
-      <main className="flex-grow p-4 overflow-y-auto lg:overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:h-full">
-          
-          {/* Left Column (Map + Chart) */}
-          <div className="lg:col-span-3 flex flex-col gap-4 lg:h-full">
-            {/* Map Area */}
-            <div className="h-[400px] lg:h-auto lg:flex-grow rounded-xl overflow-hidden shadow-2xl border border-gray-800 relative group z-0">
-               <FleetMap 
-                 planes={planes} 
-                 onSelectPlane={handleSelectPlane}
-                 selectedPlaneId={selectedPlaneId}
-               />
-               {!selectedPlaneId && (
-                 <div className="absolute top-4 left-4 sm:left-16 bg-black/60 backdrop-blur-sm px-4 py-2 rounded text-sm text-white pointer-events-none z-[400]">
-                   Select a plane for details
-                 </div>
-               )}
+      {/* Sidebar Navigation */}
+      <aside className={`bg-[var(--bg-secondary)]/80 backdrop-blur-xl border-r border-[var(--border-color)] flex flex-col transition-all duration-300 ${isSidebarOpen ? 'w-80' : 'w-16'} z-30 shadow-xl`}>
+        <div className="h-16 flex items-center px-4 border-b border-[var(--border-color)] justify-between">
+          <div className={`flex items-center gap-3 ${!isSidebarOpen && 'justify-center w-full'}`}>
+            <div className="p-2 rounded-lg text-white" style={{ backgroundColor: 'var(--accent-color)' }}>
+              <Plane size={20} />
+            </div>
+            {isSidebarOpen && <span className="font-bold text-lg tracking-tight">SkyWatcher</span>}
+          </div>
+          <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] lg:block hidden">
+            <div className="w-1 h-4 bg-[var(--border-color)] rounded-full hover:bg-[var(--accent-color)] transition-colors"></div>
+          </button>
+        </div>
+
+        {/* Status & Theme Toggle */}
+        <div className={`px-4 py-4 flex flex-col gap-4 border-b border-[var(--border-color)] ${!isSidebarOpen && 'items-center'}`}>
+          <div className="flex items-center justify-between w-full">
+            <div className="flex items-center gap-2">
+              <span className={`relative flex h-2.5 w-2.5`}>
+                <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${isConnected ? 'bg-emerald-400' : 'bg-red-400'}`}></span>
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isConnected ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
+              </span>
+              {isSidebarOpen && <span className="text-xs font-mono uppercase tracking-wider text-[var(--text-secondary)]">{isConnected ? 'Online' : 'Offline'}</span>}
             </div>
 
-            {/* Chart Area */}
-            <div className="h-64 flex-shrink-0">
-               <TelemetryChart data={historyData} selectedPlane={selectedPlane} />
-            </div>
+            <button
+              onClick={toggleTheme}
+              className="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              title="Toggle Theme"
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+            </button>
           </div>
+        </div>
 
-          {/* Right Column (Info Panel) */}
-          <div className="lg:col-span-1 h-[600px] lg:h-full overflow-hidden">
+        {/* Info Panel Integration in Sidebar */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-2">
+          {isSidebarOpen ? (
             <InfoPanel alerts={alerts} chatMessages={chat} />
-          </div>
+          ) : (
+            <div className="flex flex-col gap-4 items-center mt-4">
+              {/* Minimal Icons if needed */}
+            </div>
+          )}
+        </div>
+      </aside>
 
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col relative">
+        {/* Top Overlay Header for Map */}
+        <div className="absolute top-4 left-4 right-4 z-10 flex justify-between pointer-events-none">
+          <div className="pointer-events-auto"></div>
+          <div className="bg-[var(--bg-secondary)]/90 backdrop-blur-md border border-[var(--border-color)] rounded-xl px-5 py-3 pointer-events-auto shadow-lg flex items-center gap-6">
+            <div>
+              <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Active Aircraft</p>
+              <p className="text-2xl font-black leading-none text-[var(--text-primary)]">{planes.length}</p>
+            </div>
+            <div className="h-8 w-px bg-[var(--border-color)]"></div>
+            <div className="text-right">
+              <p className="text-sm font-mono text-[var(--text-secondary)]">{currentTime.toLocaleTimeString()}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Map Container */}
+        <div className="flex-1 relative z-0 bg-[var(--bg-tertiary)] w-full h-full">
+          <FleetMap
+            planes={planes}
+            onSelectPlane={handleSelectPlane}
+            selectedPlaneId={selectedPlaneId}
+            theme={theme}
+          />
+
+          {/* Bottom Overlay for Telemetry */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 z-20 pointer-events-none">
+            <div className="bg-[var(--bg-secondary)]/95 backdrop-blur-xl border border-[var(--border-color)] shadow-2xl rounded-2xl p-4 pointer-events-auto max-w-5xl mx-auto transition-transform duration-300">
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-sm font-bold text-[var(--text-secondary)] flex items-center gap-2 uppercase tracking-wide">
+                  {selectedPlane ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-[var(--accent-color)]"></span>
+                      {selectedPlane.callsign} Telemetry
+                    </>
+                  ) : 'Select an aircraft to view telemetry'}
+                </h3>
+              </div>
+              {selectedPlane && (
+                <div className="h-48 mt-0 w-full">
+                  <TelemetryChart data={historyData} selectedPlane={selectedPlane} theme={theme} />
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </main>
     </div>
