@@ -35,11 +35,32 @@ spec:
         - name: WS_PORT
           value: "3001"
         - name: MQTT_BROKER_URL
-          value: "mqtt://mosquitto:1883" 
+          value: "mqtt://localhost:1883" 
         - name: OPENSKY_BASE_URL
           value: "https://opensky-network.org/api/states/all"
         - name: REDIS_URL
           value: "redis://redis:6379"
+        - name: POSTGRES_HOST
+          value: "postgres.dev.svc.cluster.local"
+        - name: POSTGRES_USER
+          value: "postgres"
+        - name: POSTGRES_DB
+          value: "fleet_tracking"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: postgres-password
+        - name: POSTGRES_PORT
+          value: "5432"
+        volumeMounts:
+        - mountPath: /app/src
+          name: source-code
+      volumes:
+      - name: source-code
+        hostPath:
+          path: /home/peler1nl1kelt0s/Desktop/fleet-tracking-system/back-end/src
+          type: Directory
 ---
 apiVersion: v1
 kind: Service
