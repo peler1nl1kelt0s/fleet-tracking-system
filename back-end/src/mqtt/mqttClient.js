@@ -1,8 +1,9 @@
 import mqtt from 'mqtt';
 import redis from '../redis/redisClient.js';
-import pool from '../db/db.js';
+import pool from '../db/index.js';
 import { processAlerts } from '../alerts/alertEngine.js';
 import { getIO } from '../ws/socket.js';
+import { getChatConfig } from '../config/configManager.js';
 import {
   writeToDisk,
   readFromDisk,
@@ -58,46 +59,75 @@ client.on('message', async (topic, message) => {
  */
 async function handlePulseChat(aircraftId, data) {
   try {
-    // Determine on_ground status (default to true if missing for safety)
     const onGround = data.on_ground ?? data.metadata?.on_ground ?? true;
     const stateKey = `aircraft:${aircraftId}:status`;
     const lastState = await redis.get(stateKey);
+    const squawk = data.squawk;
 
-    // 1. Transition: Takeoff (Landed -> Airborne)
+    const scenarios = getChatConfig();
+    const callsign = await getCallsign(aircraftId);
+    if (!callsign) return;
+
+    const roomId = await ensureChatRoom(callsign, aircraftId);
+
+    // Helper to process a scenario
+    const processScenario = async (scenario) => {
+      // Pick a random message
+      const msgs = scenario.messages || [];
+      if (msgs.length === 0) return;
+      const randomMsg = msgs[Math.floor(Math.random() * msgs.length)];
+      
+      // Determine language (Mock logic: default to EN, or maybe check origin_country)
+      // For now, let's just send the text. Ideally we'd match user pref, but here we broadcast.
+      // We can send JSON with lang variants? Or just the text. 
+      // Let's send the text of the random variant.
+      await postSystemMessage(roomId, randomMsg.text);
+    };
+
+    // 1. Check Squawk Triggers
+    if (squawk) {
+       const squawkScenario = scenarios.find(s => s.squawkRules && s.squawkRules.includes(squawk));
+       // Prevent spamming squawk alert? Maybe check if we already alerted for this squawk session?
+       // For simplicity, let's assume specific unique event or throttle elsewhere.
+       // Let's only trigger if we haven't recently? 
+       // For this demo, we'll trigger. 
+       if (squawkScenario) {
+          // Check if we already triggered this squawk recently to avoid spam
+          const squawkKey = `aircraft:${aircraftId}:squawk:${squawk}`;
+          const alreadyAlerted = await redis.get(squawkKey);
+          if (!alreadyAlerted) {
+             await processScenario(squawkScenario);
+             await redis.setex(squawkKey, 300, 'alerted'); // 5 mins cooldown
+          }
+       }
+    }
+
+    // 2. Transition: Takeoff (Landed -> Airborne)
     if (!onGround && lastState !== 'airborne') {
       await redis.set(stateKey, 'airborne');
       
-      const callsign = await getCallsign(aircraftId);
-      if (callsign) {
-        const roomId = await ensureChatRoom(callsign, aircraftId);
-        
-        // Post System Message: Airborne
+      const takeoffScenario = scenarios.find(s => s.trigger === 'Take-off');
+      if (takeoffScenario) {
+        await processScenario(takeoffScenario);
+      } else {
+        // Fallback default
         await postSystemMessage(roomId, 'Aircraft is currently airborne.');
-
-        // Calculate and Post ETA
-        if (data.speed > 0 && data.altitude > 0) {
-           // Simplified heuristic for ETA (e.g., assuming 45 mins flight for demo)
-           const etaMsg = `Estimated landing time: ${calculateETA(data)}`;
-           await postSystemMessage(roomId, etaMsg);
-        }
       }
     }
-    // 2. Transition: Landing (Airborne -> Landed)
+    // 3. Transition: Landing (Airborne -> Landed)
     else if (onGround && lastState === 'airborne') {
       await redis.set(stateKey, 'landed');
 
-      const callsign = await getCallsign(aircraftId);
-      if (callsign) {
-        const roomId = await ensureChatRoom(callsign, aircraftId);
-        
-        // Post System Message: Landed
-        await postSystemMessage(roomId, 'Aircraft has landed. Chat closed.');
-
-        // Cleanup: Delete all messages for this flight session
-        await pool.query('DELETE FROM chat_messages WHERE room_id = $1', [roomId]);
-        // Optional: Delete the room itself if strictly temporary
-        await pool.query('DELETE FROM chat_rooms WHERE id = $1', [roomId]);
+      const landingScenario = scenarios.find(s => s.trigger === 'Landing');
+      if (landingScenario) {
+         await processScenario(landingScenario);
+      } else {
+         await postSystemMessage(roomId, 'Aircraft has landed.');
       }
+
+      // Cleanup: Delete all messages for this flight session
+      // Wait a bit or immediate?
+      await pool.query('DELETE FROM chat_messages WHERE room_id = $1', [roomId]);
     }
   } catch (err) {
     console.error(`Pulse Chat Error for ${aircraftId}:`, err);

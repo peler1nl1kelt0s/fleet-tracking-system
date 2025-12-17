@@ -102,7 +102,11 @@ function replayEverySecond() {
       altitude,
       on_ground,
       speed,
-      true_track
+      true_track,
+      ,
+      ,
+      ,
+      squawk
     ] = state;
 
     const payload = {
@@ -116,7 +120,8 @@ function replayEverySecond() {
       origin_country,
       time_position,
       on_ground,
-      true_track
+      true_track,
+      squawk
     };
 
     const topic = `${MQTT_TOPIC_BASE}/${icao24}/telemetry`;
