@@ -10,7 +10,7 @@ import {
   chatMessages as initialChat
 } from '../data/mockData';
 
-const SOCKET_URL = 'http://localhost:3000';
+const SOCKET_URL = import.meta.env.PROD ? '/' : 'http://localhost:3000';
 
 function FleetView() {
   const [planes, setPlanes] = useState([]);
@@ -102,16 +102,16 @@ function FleetView() {
         timestamp: alert.timestamp
       }, ...prev].slice(0, 50));
     });
-    
+
     // Listen for announcements
     socketRef.current.on('announcement', (announcement) => {
-       setChat(prev => [...prev, {
-         id: Date.now(),
-         sender: 'SYSTEM',
-         message: announcement.message,
-         timestamp: announcement.timestamp,
-         isSystem: true
-       }]);
+      setChat(prev => [...prev, {
+        id: Date.now(),
+        sender: 'SYSTEM',
+        message: announcement.message,
+        timestamp: announcement.timestamp,
+        isSystem: true
+      }]);
     });
 
     return () => {
