@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @layer base {
@@ -20,8 +20,8 @@
   }
 
   .dark {
-    /* Dark Mode (Inter Font) */
-    --font-main: 'Inter', sans-serif;
+    /* Dark Mode (Outfit Font) */
+    --font-main: 'Outfit', sans-serif;
     --bg-primary: #09090b; /* Zinc 950 */
     --bg-secondary: #18181b; /* Zinc 900 */
     --bg-tertiary: #27272a; /* Zinc 800 */
