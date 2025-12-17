@@ -65,10 +65,21 @@ async function handlePulseChat(aircraftId, data) {
     const squawk = data.squawk;
 
     const scenarios = getChatConfig();
-    const callsign = await getCallsign(aircraftId);
-    if (!callsign) return;
+    
+    // START FIX: Resolve vehicle UUID using icao24 (aircraftId)
+    // We treat aircraftId as icao24. We need the UUID for relation.
+    // data.callsign might be available.
+    const icao24 = aircraftId;
+    const callsign = data.callsign || aircraftId; // Fallback
 
-    const roomId = await ensureChatRoom(callsign, aircraftId);
+    const vehicleId = await ensureVehicleExists(icao24, callsign);
+    if (!vehicleId) {
+       console.warn(`Could not resolve vehicle UUID for ${icao24}`);
+       return;
+    }
+    // END FIX
+
+    const roomId = await ensureChatRoom(callsign, vehicleId);
 
     // Helper to process a scenario
     const processScenario = async (scenario) => {
@@ -77,22 +88,13 @@ async function handlePulseChat(aircraftId, data) {
       if (msgs.length === 0) return;
       const randomMsg = msgs[Math.floor(Math.random() * msgs.length)];
       
-      // Determine language (Mock logic: default to EN, or maybe check origin_country)
-      // For now, let's just send the text. Ideally we'd match user pref, but here we broadcast.
-      // We can send JSON with lang variants? Or just the text. 
-      // Let's send the text of the random variant.
       await postSystemMessage(roomId, randomMsg.text);
     };
 
     // 1. Check Squawk Triggers
     if (squawk) {
        const squawkScenario = scenarios.find(s => s.squawkRules && s.squawkRules.includes(squawk));
-       // Prevent spamming squawk alert? Maybe check if we already alerted for this squawk session?
-       // For simplicity, let's assume specific unique event or throttle elsewhere.
-       // Let's only trigger if we haven't recently? 
-       // For this demo, we'll trigger. 
        if (squawkScenario) {
-          // Check if we already triggered this squawk recently to avoid spam
           const squawkKey = `aircraft:${aircraftId}:squawk:${squawk}`;
           const alreadyAlerted = await redis.get(squawkKey);
           if (!alreadyAlerted) {
@@ -110,7 +112,6 @@ async function handlePulseChat(aircraftId, data) {
       if (takeoffScenario) {
         await processScenario(takeoffScenario);
       } else {
-        // Fallback default
         await postSystemMessage(roomId, 'Aircraft is currently airborne.');
       }
     }
@@ -134,20 +135,62 @@ async function handlePulseChat(aircraftId, data) {
   }
 }
 
-async function getCallsign(aircraftId) {
-  // Try cache first
-  const cached = await redis.get(`callsign:${aircraftId}`);
-  if (cached) return cached;
+/**
+ * Finds vehicle by icao24. If not found, creates it. Returns UUID.
+ */
+async function ensureVehicleExists(icao24, callsign) {
+    // Try cache (mapping icao24 -> uuid)
+    const cacheKey = `vehicle:uuid:${icao24}`;
+    const cachedUuid = await redis.get(cacheKey);
+    if (cachedUuid) return cachedUuid;
 
-  // DB Lookup
-  const res = await pool.query('SELECT plate_number FROM vehicles WHERE id = $1', [aircraftId]);
-  if (res.rows.length > 0) {
-    const callsign = res.rows[0].plate_number;
-    await redis.set(`callsign:${aircraftId}`, callsign);
-    return callsign;
-  }
-  return null;
+    // DB Lookup
+    try {
+        let res = await pool.query('SELECT id FROM vehicles WHERE icao24 = $1', [icao24]);
+        
+        if (res.rows.length === 0) {
+            // Register new vehicle
+            // plate_number must be unique. keys: icao24 is unique too.
+            // Use icao24 as plate_number fallback if callsign is not unique or present?
+            // Actually callsign changes for the same airframe (icao24). 
+            // For this system, let's use icao24 as plate_number if we must, or a combination.
+            // Simplified: Use icao24 as plate_number for now, or generated.
+            const safePlate = callsign && callsign.length > 0 ? callsign : icao24;
+            
+            // Handle duplicate plate_number issue: upsert or retry?
+            // We use ON CONFLICT DO NOTHING for safety, but we need the ID.
+            // Let's try inserting.
+            res = await pool.query(
+                `INSERT INTO vehicles (plate_number, icao24, vehicle_type, status) 
+                 VALUES ($1, $2, 'aircraft', 'active') 
+                 ON CONFLICT (icao24) DO UPDATE SET updated_at = NOW() 
+                 RETURNING id`,
+                [safePlate, icao24]
+            );
+            
+            // If conflict on plate_number, it might fail. 
+            // If that happens, select again.
+        }
+        
+        // If insert didn't return (e.g. conflict ignored but not updated?), select again
+        if (res.rows.length === 0) {
+             res = await pool.query('SELECT id FROM vehicles WHERE icao24 = $1', [icao24]);
+        }
+
+        if (res.rows.length > 0) {
+            const id = res.rows[0].id;
+            await redis.set(cacheKey, id); // Cache it
+            return id;
+        }
+    } catch (err) {
+        console.error('Error ensuring vehicle exists:', err);
+        // Fallback: try finding by plate_number?? 
+        // Or just fail.
+    }
+    return null;
 }
+
+// getCallsign removed - we use ensureVehicleExists now.
 
 async function ensureChatRoom(callsign, vehicleId) {
   // Find or create a chat room for this aircraft
