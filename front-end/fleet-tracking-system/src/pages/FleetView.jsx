@@ -20,6 +20,7 @@ const SOCKET_URL = import.meta.env.PROD ? '/' : 'http://localhost:3000';
 function FleetView() {
   const [planes, setPlanes] = useState([]);
   const [selectedPlaneId, setSelectedPlaneId] = useState(null);
+  const selectedPlaneIdRef = useRef(null); // Ref for access in socket callback
   const [historyData, setHistoryData] = useState([]);
   const [alerts, setAlerts] = useState([]);
   const [chat, setChat] = useState(initialChat);
@@ -139,6 +140,19 @@ function FleetView() {
             return [...prevPlanes, mappedPlane];
           }
         });
+
+        // Update History if Selected
+        if (selectedPlaneIdRef.current && data.icao24 === selectedPlaneIdRef.current) {
+          setHistoryData(prev => {
+             const newDataPoint = {
+               time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+               speed: data.speed || 0,
+               altitude: data.altitude || 0
+             };
+             // Keep last 20 points
+             return [...prev, newDataPoint].slice(-20);
+          });
+        }
       });
 
       socketRef.current.on('alert', (alert) => {
@@ -185,10 +199,9 @@ function FleetView() {
         .then(res => res.json())
         .then(data => {
           // Map API data to Chart format
-          // API returns { time: Date, ... }
-          // Chart expects { time: "HH:mm", speed: number, altitude: number }
+          // API returns objects with timestamp, time_position etc.
           const mappedHistory = data.map(d => ({
-            time: new Date(d.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            time: new Date(d.timestamp || d.time_position * 1000 || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             speed: d.speed,
             altitude: d.altitude
           })).reverse(); // API returns newest first (LIFO via lrange 0..N), chart usually L->R time
@@ -202,6 +215,7 @@ function FleetView() {
 
   const handleSelectPlane = (plane) => {
     setSelectedPlaneId(plane.id);
+    selectedPlaneIdRef.current = plane.id; // Update Ref
   };
 
   const selectedPlane = planes.find(p => p.id === selectedPlaneId);

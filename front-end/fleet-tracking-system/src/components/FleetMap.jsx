@@ -1,6 +1,5 @@
 import React from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -29,8 +28,6 @@ const FleetMap = ({ planes, onSelectPlane, selectedPlaneId, theme }) => {
     ? '&copy; <a href="https://carto.com/attributions">CARTO</a>'
     : '&copy; <a href="https://carto.com/attributions">CARTO</a>';
 
-  const clusterColor = theme === 'dark' ? '#6366f1' : '#3b82f6';
-
   return (
     <div className="h-full w-full">
       <MapContainer
@@ -45,48 +42,37 @@ const FleetMap = ({ planes, onSelectPlane, selectedPlaneId, theme }) => {
           attribution={attribution}
         />
 
-        <MarkerClusterGroup
-          chunkedLoading
-          polygonOptions={{
-            fillColor: clusterColor,
-            color: clusterColor,
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.5
-          }}
-        >
-          {planes.map((plane) => (
-            <Marker
-              key={plane.id}
-              position={[plane.lat, plane.lng]}
-              icon={createPlaneIcon(plane.heading)}
-              eventHandlers={{
-                click: () => onSelectPlane(plane),
-              }}
-            >
-              <Popup className="glass-popup">
-                <div className="p-1" style={{ color: '#1e293b' }}>
-                  <h3 className="font-bold text-base">{plane.callsign}</h3>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs">
-                    <span className="text-gray-500">Type</span>
-                    <span className="font-medium">{plane.type}</span>
-                    <span className="text-gray-500">Speed</span>
-                    <span className="font-medium">{plane.speed} km/h</span>
-                    <span className="text-gray-500">Altitude</span>
-                    <span className="font-medium">{plane.altitude} ft</span>
-                  </div>
-                  <button
-                    onClick={() => onSelectPlane(plane)}
-                    className="mt-3 w-full text-xs text-white px-2 py-1.5 rounded transition font-medium"
-                    style={{ backgroundColor: 'var(--accent-color)' }}
-                  >
-                    Track Output
-                  </button>
+        {planes.map((plane) => (
+          <Marker
+            key={plane.id}
+            position={[plane.lat, plane.lng]}
+            icon={createPlaneIcon(plane.heading)}
+            eventHandlers={{
+              click: () => onSelectPlane(plane),
+            }}
+          >
+            <Popup className="glass-popup">
+              <div className="p-1" style={{ color: '#1e293b' }}>
+                <h3 className="font-bold text-base">{plane.callsign}</h3>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs">
+                  <span className="text-gray-500">Type</span>
+                  <span className="font-medium">{plane.type}</span>
+                  <span className="text-gray-500">Speed</span>
+                  <span className="font-medium">{plane.speed} km/h</span>
+                  <span className="text-gray-500">Altitude</span>
+                  <span className="font-medium">{plane.altitude} ft</span>
                 </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MarkerClusterGroup>
+                <button
+                  onClick={() => onSelectPlane(plane)}
+                  className="mt-3 w-full text-xs text-white px-2 py-1.5 rounded transition font-medium"
+                  style={{ backgroundColor: 'var(--accent-color)' }}
+                >
+                  Track Output
+                </button>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
       </MapContainer>
     </div>
   );
