@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useToast } from '../contexts/ToastContext';
+import Button from './Button';
+import Input from './Input';
 import './PulseChat.css';
 
 const PulseChat = () => {
+  const { showToast } = useToast();
   // UI State
   const [callsign, setCallsign] = useState('');
   const [activeCallsign, setActiveCallsign] = useState(null);
   const [status, setStatus] = useState('IDLE'); // IDLE, LOADING, ACTIVE, LANDED, ERROR
-  const [errorMessage, setErrorMessage] = useState('');
-  
+    
   // Data State
   const [telemetry, setTelemetry] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -38,7 +41,6 @@ const PulseChat = () => {
     if (!callsign.trim()) return;
 
     setStatus('LOADING');
-    setErrorMessage('');
     stopPolling();
 
     try {
@@ -50,7 +52,7 @@ const PulseChat = () => {
       
       if (data.on_ground) {
         setStatus('ERROR');
-        setErrorMessage('Aircraft is currently on the ground. Chat is not active.');
+        showToast('Aircraft is currently on the ground. Chat is not active.', 'error');
       } else {
         setActiveCallsign(callsign);
         setTelemetry(data);
@@ -59,7 +61,7 @@ const PulseChat = () => {
       }
     } catch (err) {
       setStatus('ERROR');
-      setErrorMessage(err.message);
+      showToast(err.message, 'error');
     }
   };
 
@@ -164,17 +166,18 @@ const PulseChat = () => {
           <h2>Pulse Chat</h2>
           <p>Enter aircraft callsign to join the live stream.</p>
           <form onSubmit={handleSearch}>
-            <input 
+            <Input 
               type="text" 
               placeholder="e.g. TK202" 
               value={callsign}
               onChange={(e) => setCallsign(e.target.value.toUpperCase())}
+              className="mb-2"
             />
-            <button type="submit" disabled={status === 'LOADING'}>
+            <Button type="submit" disabled={status === 'LOADING'} variant="primary">
               {status === 'LOADING' ? 'Searching...' : 'Connect'}
-            </button>
+            </Button>
           </form>
-          {status === 'ERROR' && <div className="error-message">{errorMessage}</div>}
+
         </div>
       </div>
     );
@@ -204,15 +207,16 @@ const PulseChat = () => {
               Aircraft has landed. Chat closed.
             </div>
           ) : (
-            <form onSubmit={sendMessage}>
-              <input 
+            <form onSubmit={sendMessage} className="flex gap-2">
+              <Input 
                 type="text" 
                 placeholder="Type a message..." 
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 autoFocus
+                className="flex-grow"
               />
-              <button type="submit">Send</button>
+              <Button type="submit" variant="primary">Send</Button>
             </form>
           )}
         </div>

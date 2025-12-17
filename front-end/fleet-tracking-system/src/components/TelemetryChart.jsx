@@ -12,7 +12,7 @@ const TelemetryChart = ({ data, selectedPlane, theme }) => {
   const tooltipText = theme === 'dark' ? '#fafafa' : '#0f172a';
 
   return (
-    <div className="h-full w-full flex flex-col">
+    <div className="h-full w-full flex flex-col" aria-labelledby="telemetry-chart-title">
       <div className="flex-grow min-h-0">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
