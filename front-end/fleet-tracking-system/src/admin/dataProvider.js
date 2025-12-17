@@ -17,6 +17,11 @@ const mockStore = {
     { id: 2, name: 'Routine Check', triggers: ['interval_1h'], script: 'Tower: Status check...' },
     { id: 3, name: 'Turbulence', triggers: ['weather_bad'], script: 'Pilot: Requesting altitude change...' },
   ],
+  'squawk-codes': [
+    { id: '7500', code: '7500', description: 'Unlawful Interference (Hijacking)', severity: 'critical', message: 'HIJACKING REPORTED', color: '#ff0000' },
+    { id: '7600', code: '7600', description: 'Radio Failure', severity: 'warning', message: 'RADIO FAILURE', color: '#ffa500' },
+    { id: '7700', code: '7700', description: 'General Emergency', severity: 'critical', message: 'EMERGENCY DECLARED', color: '#ff0000' }
+  ],
   'system-config': {
     id: 'system',
     apiRefreshRate: 5000,
@@ -99,7 +104,7 @@ const customDataProvider = {
       `create ${resource}`,
       () => baseDataProvider.create(resource, params),
       () => {
-        const newItem = { id: Math.random(), ...params.data };
+        const newItem = { id: params.data.id || Math.random(), ...params.data };
         if(mockStore[resource]) mockStore[resource].push(newItem);
         return Promise.resolve({ data: newItem });
       }

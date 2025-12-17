@@ -4,13 +4,17 @@ import { Route } from 'react-router-dom';
 import { createTheme } from '@mui/material/styles';
 import dataProvider from './dataProvider';
 import { ScenarioList, ScenarioEdit, ScenarioCreate } from './ChatScenarios';
+import { SquawkList, SquawkEdit, SquawkCreate } from './SquawkCodes';
 import SystemConfig from './SystemConfig';
 import AdminDashboard from './AdminDashboard';
+import Broadcast from './Broadcast';
 
 // Icons
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import SettingsIcon from '@mui/icons-material/Settings';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+import CampaignIcon from '@mui/icons-material/Campaign';
+import WarningIcon from '@mui/icons-material/Warning';
 
 // Custom Theme matching Tailwind config
 const theme = createTheme({
@@ -47,7 +51,9 @@ const theme = createTheme({
 const MyMenu = () => (
     <Menu>
         <Menu.Item to="/admin" primaryText="Dashboard" leftIcon={<DashboardIcon />} />
+        <Menu.Item to="/admin/broadcast" primaryText="Broadcast" leftIcon={<CampaignIcon />} />
         <Menu.Item to="/admin/chat-scenarios" primaryText="Pulse Chat Scenarios" leftIcon={<ChatBubbleIcon />} />
+        <Menu.Item to="/admin/squawk-codes" primaryText="Squawk Codes" leftIcon={<WarningIcon />} />
         <Menu.Item to="/admin/system-config" primaryText="System Config" leftIcon={<SettingsIcon />} />
     </Menu>
 );
@@ -68,8 +74,15 @@ const AdminApp = () => (
             edit={ScenarioEdit} 
             create={ScenarioCreate}
         />
+        <Resource 
+            name="squawk-codes" 
+            list={SquawkList} 
+            edit={SquawkEdit} 
+            create={SquawkCreate}
+        />
         <CustomRoutes>
             <Route path="/system-config" element={<SystemConfig />} />
+            <Route path="/broadcast" element={<Broadcast />} />
         </CustomRoutes>
     </Admin>
 );
