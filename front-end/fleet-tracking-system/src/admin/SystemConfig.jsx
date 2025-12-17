@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Title, useDataProvider, useNotify } from 'react-admin';
-import { Card, CardContent, Button, TextField, Grid, Typography, Divider } from '@mui/material';
+import { Card, CardContent, Button, TextField, Grid, Typography, Divider, Switch, FormControlLabel } from '@mui/material';
 
 const SystemConfig = () => {
   const dataProvider = useDataProvider();
   const notify = useNotify();
   const [config, setConfig] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [useMock, setUseMock] = useState(localStorage.getItem('useMockData') === 'true');
 
   useEffect(() => {
     dataProvider.getSystemConfig()
@@ -22,11 +23,16 @@ const SystemConfig = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // Reconstruct config object with nested structures if flattened by form or keep as is
-    // Assuming simple binding
     dataProvider.updateSystemConfig(config)
       .then(() => notify('Ayarlar kaydedildi', { type: 'success' }))
       .catch(() => notify('Kaydetme başarısız', { type: 'error' }));
+  };
+
+  const handleMockChange = (event) => {
+    const isChecked = event.target.checked;
+    setUseMock(isChecked);
+    localStorage.setItem('useMockData', isChecked);
+    window.location.reload(); 
   };
 
   const handleChange = (key, value) => {
@@ -46,6 +52,13 @@ const SystemConfig = () => {
     <Card>
       <Title title="Sistem Yapılandırması" />
       <CardContent>
+        <FormControlLabel
+          control={<Switch checked={useMock} onChange={handleMockChange} />}
+          label="Mock Data Kullan (API Bağlantısı Kesikse Otomatik Devreye Girer)"
+          sx={{ mb: 2 }}
+        />
+        <Divider sx={{ mb: 3 }} />
+
         <form onSubmit={handleSubmit}>
           <Typography variant="h6" gutterBottom>API Ayarları</Typography>
           <Grid container spacing={3}>

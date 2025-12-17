@@ -7,7 +7,12 @@ import TelemetryChart from '../components/TelemetryChart';
 import InfoPanel from '../components/InfoPanel';
 
 import {
-  chatMessages as initialChat
+  chatMessages as initialChat,
+  generateInitialPlanes,
+  updatePlanePositions,
+  alertTypes,
+  chatMessages as mockChatMessages,
+  generateTelemetryHistory
 } from '../data/mockData';
 
 const SOCKET_URL = import.meta.env.PROD ? '/' : 'http://localhost:3000';
@@ -20,6 +25,8 @@ function FleetView() {
   const [chat, setChat] = useState(initialChat);
   const [isConnected, setIsConnected] = useState(false);
   const [isSidebarOpen, setSidebarOpen] = useState(true);
+
+  const useMockData = localStorage.getItem('useMockData') === 'true';
 
   // Theme State
   const [theme, setTheme] = useState(() => {
@@ -55,69 +62,109 @@ function FleetView() {
   };
 
   useEffect(() => {
-    // Socket.IO Connection
-    socketRef.current = io(SOCKET_URL);
-
-    socketRef.current.on('connect', () => {
-      console.log('Connected to WebSocket');
+    if (useMockData) {
+      console.log('Mock Data Enabled');
+      setPlanes(generateInitialPlanes(20));
       setIsConnected(true);
-    });
 
-    socketRef.current.on('disconnect', () => {
-      console.log('Disconnected from WebSocket');
-      setIsConnected(false);
-    });
+      // Simulation Interval
+      const simulationInterval = setInterval(() => {
+        setPlanes(prevPlanes => updatePlanePositions(prevPlanes));
+      }, 2000);
 
-    socketRef.current.on('telemetry', (data) => {
-      setPlanes(prevPlanes => {
-        const index = prevPlanes.findIndex(p => p.id === data.icao24);
-
-        const mappedPlane = {
-          id: data.icao24,
-          callsign: data.callsign || data.icao24,
-          lat: data.lat,
-          lng: data.lng,
-          heading: data.true_track,
-          speed: data.speed || 0,
-          altitude: data.altitude || 0,
-          status: 'normal',
-          type: 'Unknown',
-          lastUpdate: Date.now()
-        };
-
-        if (index > -1) {
-          const newPlanes = [...prevPlanes];
-          newPlanes[index] = { ...newPlanes[index], ...mappedPlane };
-          return newPlanes;
-        } else {
-          return [...prevPlanes, mappedPlane];
+      // Random Alerts
+      const alertInterval = setInterval(() => {
+        if (Math.random() > 0.7) {
+          const randomAlert = alertTypes[Math.floor(Math.random() * alertTypes.length)];
+          setAlerts(prev => [{
+            type: randomAlert.type,
+            message: randomAlert.message,
+            timestamp: Date.now()
+          }, ...prev].slice(0, 50));
         }
+      }, 8000);
+
+      // Random Chat
+      const chatInterval = setInterval(() => {
+        if (Math.random() > 0.6) {
+          const randomMsg = mockChatMessages[Math.floor(Math.random() * mockChatMessages.length)];
+          setChat(prev => [...prev, {
+            ...randomMsg,
+            text: `${randomMsg.text} [${new Date().toLocaleTimeString()}]` 
+          }]);
+        }
+      }, 12000);
+
+      return () => {
+        clearInterval(simulationInterval);
+        clearInterval(alertInterval);
+        clearInterval(chatInterval);
+      };
+    } else {
+      // Socket.IO Connection
+      socketRef.current = io(SOCKET_URL);
+
+      socketRef.current.on('connect', () => {
+        console.log('Connected to WebSocket');
+        setIsConnected(true);
       });
-    });
 
-    socketRef.current.on('alert', (alert) => {
-      setAlerts(prev => [{
-        type: alert.type === 'SPEED' || alert.type === 'ALTITUDE' ? 'warning' : 'info',
-        message: `${alert.message} - ${alert.aircraftId}`,
-        timestamp: alert.timestamp
-      }, ...prev].slice(0, 50));
-    });
+      socketRef.current.on('disconnect', () => {
+        console.log('Disconnected from WebSocket');
+        setIsConnected(false);
+      });
 
-    // Listen for announcements
-    socketRef.current.on('announcement', (announcement) => {
-      setChat(prev => [...prev, {
-        id: Date.now(),
-        sender: 'SYSTEM',
-        message: announcement.message,
-        timestamp: announcement.timestamp,
-        isSystem: true
-      }]);
-    });
+      socketRef.current.on('telemetry', (data) => {
+        setPlanes(prevPlanes => {
+          const index = prevPlanes.findIndex(p => p.id === data.icao24);
 
-    return () => {
-      if (socketRef.current) socketRef.current.disconnect();
-    };
-  }, []);
+          const mappedPlane = {
+            id: data.icao24,
+            callsign: data.callsign || data.icao24,
+            lat: data.lat,
+            lng: data.lng,
+            heading: data.true_track,
+            speed: data.speed || 0,
+            altitude: data.altitude || 0,
+            status: 'normal',
+            type: 'Unknown',
+            lastUpdate: Date.now()
+          };
+
+          if (index > -1) {
+            const newPlanes = [...prevPlanes];
+            newPlanes[index] = { ...newPlanes[index], ...mappedPlane };
+            return newPlanes;
+          } else {
+            return [...prevPlanes, mappedPlane];
+          }
+        });
+      });
+
+      socketRef.current.on('alert', (alert) => {
+        setAlerts(prev => [{
+          type: alert.type === 'SPEED' || alert.type === 'ALTITUDE' ? 'warning' : 'info',
+          message: `${alert.message} - ${alert.aircraftId}`,
+          timestamp: alert.timestamp
+        }, ...prev].slice(0, 50));
+      });
+      
+      // Listen for announcements
+      socketRef.current.on('announcement', (announcement) => {
+         setChat(prev => [...prev, {
+           id: Date.now(),
+           sender: 'SYSTEM',
+           message: announcement.message,
+           timestamp: announcement.timestamp,
+           isSystem: true
+         }]);
+      });
+
+      return () => {
+        if (socketRef.current) socketRef.current.disconnect();
+      };
+    }
+  }, [useMockData]);
 
   // Fetch history when plane selected
   useEffect(() => {
@@ -126,23 +173,32 @@ function FleetView() {
     // Clear previous history
     setHistoryData([]);
 
-    fetch(`http://localhost:3000/api/telemetry/${selectedPlaneId}?limit=20`)
-      .then(res => res.json())
-      .then(data => {
-        // Map API data to Chart format
-        // API returns { time: Date, ... }
-        // Chart expects { time: "HH:mm", speed: number, altitude: number }
-        const mappedHistory = data.map(d => ({
-          time: new Date(d.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          speed: d.speed,
-          altitude: d.altitude
-        })).reverse(); // API returns newest first (LIFO via lrange 0..N), chart usually L->R time
+    if (useMockData) {
+      // Mock History
+      const mockHistory = generateTelemetryHistory(20).map(d => ({
+        ...d,
+        // Ensure format matches chart expectation if needed, although generateTelemetryHistory already returns { time, speed, altitude }
+      }));
+      setHistoryData(mockHistory);
+    } else {
+      fetch(`http://localhost:3000/api/telemetry/${selectedPlaneId}?limit=20`)
+        .then(res => res.json())
+        .then(data => {
+          // Map API data to Chart format
+          // API returns { time: Date, ... }
+          // Chart expects { time: "HH:mm", speed: number, altitude: number }
+          const mappedHistory = data.map(d => ({
+            time: new Date(d.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            speed: d.speed,
+            altitude: d.altitude
+          })).reverse(); // API returns newest first (LIFO via lrange 0..N), chart usually L->R time
 
-        setHistoryData(mappedHistory);
-      })
-      .catch(err => console.error("History fetch failed", err));
+          setHistoryData(mappedHistory);
+        })
+        .catch(err => console.error("History fetch failed", err));
+    }
 
-  }, [selectedPlaneId]);
+  }, [selectedPlaneId, useMockData]);
 
   const handleSelectPlane = (plane) => {
     setSelectedPlaneId(plane.id);
