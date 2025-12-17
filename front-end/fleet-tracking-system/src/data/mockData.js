@@ -69,11 +69,22 @@ export const generateTelemetryHistory = (minutes = 30) => {
 
 // Random chat messages
 export const chatMessages = [
-  { user: 'Tower', text: 'TK105, set the altitude to 32000' },
-  { user: 'Pilot_TK105', text: 'Roger Tower, 32000 feet.' },
-  { user: 'Ops_Central', text: 'Area 4\'te Is there a weather update?' },
-  { user: 'Meteorology', text: 'Area 4\'te severe turbulanca is expected.' },
-  { user: 'System', text: 'FLT-1012 disconnected.' },
+  { user: 'Tower', text: 'TK105, climb and maintain flight level 320.' },
+  { user: 'Pilot_TK105', text: 'Climbing to flight level 320, TK105.' },
+  { user: 'Tower', text: 'BAW66, turn right heading 090, intercept localizer runway 35L.' },
+  { user: 'Pilot_BAW66', text: 'Right heading 090, intercepting localizer 35L, BAW66.' },
+  { user: 'System', text: 'New flight plan received for FLT-1023.' },
+  { user: 'Tower', text: 'Lufthansa 450, wind 340 at 12 knots, cleared for takeoff runway 35R.' },
+  { user: 'Pilot_DLH450', text: 'Cleared for takeoff 35R, Lufthansa 450.' },
+  { user: 'System', text: 'Squawk code 4721 assigned to FLT-204.' },
+  { user: 'Tower', text: 'AFR12, traffic 2 o\'clock, 5 miles, Boeing 737, 3000 feet below.' },
+  { user: 'Pilot_AFR12', text: 'Traffic in sight, AFR12.' },
+  { user: 'System', text: 'Weather radar update: Storm cell detected in Sector 4.' },
+  { user: 'Tower', text: 'THY78, contact Istanbul Approach on 120.5.' },
+  { user: 'Pilot_THY78', text: '120.5, good day, THY78.' },
+  { user: 'System', text: 'FLT-1004 entered restricted airspace.' },
+  { user: 'Tower', text: 'Emirates 5, descend to 4000 feet, QNH 1013.' },
+  { user: 'Pilot_UAE5', text: 'Descending to 4000 feet, QNH 1013, Emirates 5.' },
 ];
 
 // Random warns

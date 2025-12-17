@@ -50,28 +50,38 @@ const InfoPanel = ({ alerts, chatMessages }) => {
       <div className="flex-1 min-h-[250px] flex flex-col">
         <div className="flex items-center gap-2 mb-2">
           <MessageSquare className="text-[var(--accent-color)]" size={16} />
-          <h2 className="text-sm font-semibold text-[var(--text-secondary)]">Live Comms</h2>
+          <h2 className="text-sm font-semibold text-[var(--text-secondary)]">Pulse Chat</h2>
           <Activity className="ml-auto text-[var(--success-color)] animate-pulse" size={14} />
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar bg-[var(--bg-tertiary)] rounded-lg p-2 border border-[var(--border-color)]">
-          {chatMessages.map((msg, idx) => (
-            <div key={idx} className="flex flex-col">
-              <div className="flex items-baseline justify-between">
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${msg.user === 'Kule' ? 'text-[var(--warning-color)]' :
-                    msg.user === 'Sistem' ? 'text-[var(--danger-color)]' : 'text-[var(--accent-color)]'
-                  }`}>
-                  {msg.user}
-                </span>
-                <span className="text-[9px] text-[var(--text-muted)]">
-                  {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
+          {chatMessages.map((msg, idx) => {
+            const isSystemOrAdmin = msg.isSystem || msg.sender === 'ADMIN';
+            const senderDisplayName = msg.sender || msg.user; // sender'ı tercih et, yoksa user kullan
+
+            let senderColorClass = 'text-[var(--accent-color)]'; // Varsayılan renk
+            if (senderDisplayName === 'Tower') {
+              senderColorClass = 'text-[var(--warning-color)]';
+            } else if (senderDisplayName === 'System' || isSystemOrAdmin) {
+              senderColorClass = 'text-[var(--danger-color)] font-bold uppercase'; // Sistem veya Admin mesajları için belirgin stil
+            }
+
+            return (
+              <div key={idx} className="flex flex-col">
+                <div className="flex items-baseline justify-between">
+                  <span className={`text-[10px] font-bold uppercase tracking-wider ${senderColorClass}`}>
+                    {senderDisplayName}
+                  </span>
+                  <span className="text-[9px] text-[var(--text-muted)]">
+                    {new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5 leading-relaxed">
+                  {msg.text || msg.message}
+                </p>
               </div>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5 leading-relaxed">
-                {msg.text}
-              </p>
-            </div>
-          ))}
+            );
+          })}
           <div ref={chatEndRef} />
         </div>
       </div>

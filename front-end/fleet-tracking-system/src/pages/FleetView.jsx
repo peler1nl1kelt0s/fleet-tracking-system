@@ -141,16 +141,30 @@ function FleetView() {
           }
         });
 
-        // Update History if Selected
+        // Update History if Selected (Throttled to 5 mins)
         if (selectedPlaneIdRef.current && data.icao24 === selectedPlaneIdRef.current) {
           setHistoryData(prev => {
+             const now = Date.now();
+             // Use data timestamp if available, otherwise fallback to now
+             const dataTs = data.timestamp ? new Date(data.timestamp).getTime() : (data.time_position ? data.time_position * 1000 : now);
+             
+             const lastPoint = prev[prev.length - 1];
+             
+             if (lastPoint && lastPoint.rawTimestamp) {
+                if (dataTs - lastPoint.rawTimestamp < 30000) { // Throttled to 30 seconds
+                   return prev; // Not enough time passed
+                }
+             }
+             
              const newDataPoint = {
-               time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+               time: new Date(dataTs).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                speed: data.speed || 0,
-               altitude: data.altitude || 0
+               altitude: data.altitude || 0,
+               rawTimestamp: dataTs
              };
-             // Keep last 20 points
-             return [...prev, newDataPoint].slice(-20);
+             
+             // Keep last ~7-10 points (30 mins / 5 mins = 6 points)
+             return [...prev, newDataPoint].slice(-10);
           });
         }
       });
@@ -167,8 +181,9 @@ function FleetView() {
       socketRef.current.on('announcement', (announcement) => {
          setChat(prev => [...prev, {
            id: Date.now(),
-           sender: 'SYSTEM',
+           sender: 'ADMIN',
            message: announcement.message,
+           text: announcement.message, // Add text property for InfoPanel
            timestamp: announcement.timestamp,
            isSystem: true
          }]);
@@ -195,16 +210,20 @@ function FleetView() {
       }));
       setHistoryData(mockHistory);
     } else {
-      fetch(`http://localhost:3000/api/telemetry/${selectedPlaneId}?limit=20`)
+      fetch(`http://localhost:3000/api/telemetry/${selectedPlaneId}?duration=1800&step=300`)
         .then(res => res.json())
         .then(data => {
           // Map API data to Chart format
           // API returns objects with timestamp, time_position etc.
-          const mappedHistory = data.map(d => ({
-            time: new Date(d.timestamp || d.time_position * 1000 || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            speed: d.speed,
-            altitude: d.altitude
-          })).reverse(); // API returns newest first (LIFO via lrange 0..N), chart usually L->R time
+          const mappedHistory = data.map(d => {
+            const ts = d.timestamp || d.time_position * 1000 || Date.now();
+            return {
+              time: new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              speed: d.speed,
+              altitude: d.altitude,
+              rawTimestamp: ts
+            };
+          }).reverse(); // API returns newest first (LIFO via lrange 0..N), chart usually L->R time
 
           setHistoryData(mappedHistory);
         })
