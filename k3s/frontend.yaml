@@ -19,9 +19,9 @@ spec:
       containers:
       - name: frontend
 <<<<<<< HEAD
-        image: ghcr.io/peler1nl1kelt0s/fleet-tracking-system-frontend:9bab0e0e240054e1163a5653f9fa14b77fadfd23
+        image: ghcr.io/peler1nl1kelt0s/fleet-tracking-system-frontend:2cb6d9634063a9c0549e63ae6f827609efec28a0
 =======
-        image: ghcr.io/peler1nl1kelt0s/fleet-tracking-system-frontend:f89d64ce67b2332fdd328ecb0974ebb987dfc65b
+        image: ghcr.io/peler1nl1kelt0s/fleet-tracking-system-frontend:2cb6d9634063a9c0549e63ae6f827609efec28a0
 >>>>>>> be2288b (Update image tags to 450efc8a840e0feffd3f183ad0f8475e3fe69b7d)
         imagePullPolicy: Always
         ports:
