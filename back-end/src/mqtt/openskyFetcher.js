@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import fetch from 'node-fetch';
+import { getSystemConfig } from '../config/configManager.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, '../../../.env') });
@@ -15,12 +16,24 @@ if (!process.env.MQTT_BROKER_URL) {
 const client = mqtt.connect(process.env.MQTT_BROKER_URL);
 const MQTT_TOPIC_BASE = 'fleet/aircraft';
 
-const BOUNDS = {
+// Initial Load
+let systemConfig = getSystemConfig();
+
+// Default if config fails
+let BOUNDS = systemConfig.bounds || {
   lamin: 35.5,
   lomin: 25.0,
   lamax: 42.5,
   lomax: 45.0
 };
+let FETCH_INTERVAL = systemConfig.apiRefreshRate || 20000;
+
+// Refresh config periodically
+setInterval(() => {
+  systemConfig = getSystemConfig();
+  if (systemConfig.bounds) BOUNDS = systemConfig.bounds;
+  if (systemConfig.apiRefreshRate) FETCH_INTERVAL = systemConfig.apiRefreshRate;
+}, 10000);
 
 let lastStates = [];
 let messageQueue = [];
@@ -112,7 +125,16 @@ function replayEverySecond() {
   }
 }
 
-setInterval(fetchOpenSky, 20_000);
+// Use a recursive timeout pattern to allow interval changes to take effect immediately after the next fetch
+function scheduleNextFetch() {
+  setTimeout(async () => {
+    await fetchOpenSky();
+    scheduleNextFetch();
+  }, FETCH_INTERVAL);
+}
+
+// Start the loop
+scheduleNextFetch();
 
 setInterval(replayEverySecond, 1_000);
 
