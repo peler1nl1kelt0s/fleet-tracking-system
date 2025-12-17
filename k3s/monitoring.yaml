@@ -84,10 +84,10 @@ spec:
         - containerPort: 9090
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "200m"
+            memory: "128Mi"
+            cpu: "100m"
           limits:
-            memory: "1Gi"
+            memory: "512Mi"
             cpu: "500m"
         volumeMounts:
         - name: config-volume
@@ -133,10 +133,12 @@ spec:
       - name: grafana
         image: grafana/grafana:10.0.0
         ports:
-        - containerPort: 3000
+        - containerPort: 3100
         env:
         - name: GF_SECURITY_ADMIN_PASSWORD
           value: "admin"
+        - name: GF_SERVER_HTTP_PORT
+          value: "3100"
         resources:
           requests:
             memory: "64Mi"
@@ -155,5 +157,5 @@ spec:
     app: grafana
   ports:
     - port: 80
-      targetPort: 3000
+      targetPort: 3100
   type: ClusterIP
