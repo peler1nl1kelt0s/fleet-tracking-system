@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Button from '../components/Button';
 import { Plane, Moon, Sun, Settings } from 'lucide-react';
 import io from 'socket.io-client';
 import { Link } from 'react-router-dom';
@@ -25,7 +26,7 @@ function FleetView() {
   const [alerts, setAlerts] = useState([]);
   const [chat, setChat] = useState(initialChat);
   const [isConnected, setIsConnected] = useState(false);
-  const [isSidebarOpen, setSidebarOpen] = useState(true);
+  const [isSidebarOpen, setSidebarOpen] = useState(window.innerWidth >= 1024);
 
   const useMockData = localStorage.getItem('useMockData') === 'true';
 
@@ -240,18 +241,32 @@ function FleetView() {
   const selectedPlane = planes.find(p => p.id === selectedPlaneId);
 
   return (
-    <div className="flex h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300 overflow-hidden font-[family-name:var(--font-main)]">
+    <main className="flex h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300 overflow-hidden font-[family-name:var(--font-main)]">
+      {/* Overlay for mobile sidebar */}
+      {isSidebarOpen && (
+        <div
+          role="button"
+          aria-label="Kenar çubuğunu kapat"
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        ></div>
+      )}
 
       {/* Sidebar Navigation */}
-      <aside className={`bg-[var(--bg-secondary)]/80 backdrop-blur-xl border-r border-[var(--border-color)] flex flex-col transition-all duration-300 ${isSidebarOpen ? 'w-80' : 'w-16'} z-30 shadow-xl`}>
+      <aside role="navigation" className={`fixed inset-y-0 left-0 bg-[var(--bg-secondary)]/80 backdrop-blur-xl border-r border-[var(--border-color)] flex flex-col transition-all duration-300 transform ${isSidebarOpen ? 'translate-x-0 w-80' : '-translate-x-full w-0'} lg:relative lg:translate-x-0 lg:w-80 z-30 shadow-xl lg:${isSidebarOpen ? 'w-80' : 'w-16'}`}>
         <div className="h-16 flex items-center px-4 border-b border-[var(--border-color)] justify-between">
           <div className={`flex items-center gap-3 ${!isSidebarOpen && 'justify-center w-full'}`}>
-            <div className="p-2 rounded-lg text-white" style={{ backgroundColor: 'var(--accent-color)' }}>
+            <div className="p-2 rounded-lg text-white bg-[var(--accent-color)]">
               <Plane size={20} />
             </div>
             {isSidebarOpen && <span className="font-bold text-lg tracking-tight">SkyWatcher</span>}
           </div>
-          <button onClick={() => setSidebarOpen(!isSidebarOpen)} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] lg:block hidden">
+          <button
+            onClick={() => setSidebarOpen(!isSidebarOpen)}
+            className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] hidden lg:block"
+            aria-label={isSidebarOpen ? 'Kenar çubuğunu kapat' : 'Kenar çubuğunu aç'}
+            aria-expanded={isSidebarOpen}
+          >
             <div className="w-1 h-4 bg-[var(--border-color)] rounded-full hover:bg-[var(--accent-color)] transition-colors"></div>
           </button>
         </div>
@@ -268,16 +283,19 @@ function FleetView() {
             </div>
 
             <div className="flex gap-2">
-              <Link to="/admin" className="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]" title="Admin Panel">
+              <Link to="/admin" className="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]" title="Admin Panel" aria-label="Admin Paneli">
                 <Settings size={16} />
               </Link>
-              <button
+              <Button
                 onClick={toggleTheme}
-                className="p-1.5 rounded-md hover:bg-[var(--bg-tertiary)] transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                className="p-1.5 rounded-md"
                 title="Toggle Theme"
+                variant="outline"
+                aria-label={theme === 'dark' ? 'Koyu temayı aç' : 'Açık temayı aç'}
+                aria-live="polite"
               >
                 {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -299,10 +317,10 @@ function FleetView() {
         {/* Top Overlay Header for Map */}
         <div className="absolute top-4 left-4 right-4 z-10 flex justify-between pointer-events-none">
           <div className="pointer-events-auto"></div>
-          <div className="bg-[var(--bg-secondary)]/90 backdrop-blur-md border border-[var(--border-color)] rounded-xl px-5 py-3 pointer-events-auto shadow-lg flex items-center gap-6">
+          <div className="bg-[var(--bg-secondary)]/90 backdrop-blur-md border border-[var(--border-color)] rounded-xl px-3 py-2 md:px-5 md:py-3 pointer-events-auto shadow-lg flex flex-col md:flex-row items-center md:gap-6 gap-2">
             <div>
               <p className="text-[10px] uppercase tracking-widest text-[var(--text-muted)] font-bold">Active Aircraft</p>
-              <p className="text-2xl font-black leading-none text-[var(--text-primary)]">{planes.length}</p>
+              <p className="text-2xl font-black leading-none text-[var(--text-primary)]" aria-live="polite">{planes.length}</p>
             </div>
             <div className="h-8 w-px bg-[var(--border-color)]"></div>
             <div className="text-right">
@@ -322,9 +340,9 @@ function FleetView() {
 
           {/* Bottom Overlay for Telemetry */}
           <div className="absolute bottom-0 left-0 right-0 p-4 z-20 pointer-events-none">
-            <div className="bg-[var(--bg-secondary)]/95 backdrop-blur-xl border border-[var(--border-color)] shadow-2xl rounded-2xl p-4 pointer-events-auto max-w-5xl mx-auto transition-transform duration-300">
+            <div className="bg-[var(--bg-secondary)]/95 backdrop-blur-xl border border-[var(--border-color)] shadow-2xl rounded-2xl p-2 sm:p-4 pointer-events-auto max-w-full sm:max-w-xl md:max-w-3xl lg:max-w-5xl mx-auto transition-transform duration-300">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-bold text-[var(--text-secondary)] flex items-center gap-2 uppercase tracking-wide">
+                <h3 id="telemetry-chart-title" className="text-sm font-bold text-[var(--text-secondary)] flex items-center gap-2 uppercase tracking-wide">
                   {selectedPlane ? (
                     <>
                       <span className="w-2 h-2 rounded-full bg-[var(--accent-color)]"></span>
@@ -334,7 +352,7 @@ function FleetView() {
                 </h3>
               </div>
               {selectedPlane && (
-                <div className="h-48 mt-0 w-full">
+                <div className="h-32 sm:h-40 md:h-48 mt-0 w-full">
                   <TelemetryChart data={historyData} selectedPlane={selectedPlane} theme={theme} />
                 </div>
               )}
@@ -342,7 +360,7 @@ function FleetView() {
           </div>
         </div>
       </main>
-    </div>
+    </main>
   );
 }
 

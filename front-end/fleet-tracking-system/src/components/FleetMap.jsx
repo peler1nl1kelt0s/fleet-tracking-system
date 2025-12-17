@@ -1,4 +1,5 @@
 import React from 'react';
+import Button from './Button';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -33,7 +34,7 @@ const FleetMap = ({ planes, onSelectPlane, selectedPlaneId, theme }) => {
       <MapContainer
         center={[39.0, 35.0]}
         zoom={6}
-        style={{ height: '100%', width: '100%', background: 'var(--bg-tertiary)' }}
+        className="h-full w-full bg-[var(--bg-tertiary)]"
         attributionControl={false}
       >
         <TileLayer
@@ -52,7 +53,7 @@ const FleetMap = ({ planes, onSelectPlane, selectedPlaneId, theme }) => {
             }}
           >
             <Popup className="glass-popup">
-              <div className="p-1" style={{ color: '#1e293b' }}>
+              <div className="p-1 text-[var(--text-primary)]">
                 <h3 className="font-bold text-base">{plane.callsign}</h3>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2 text-xs">
                   <span className="text-gray-500">Type</span>
@@ -62,13 +63,13 @@ const FleetMap = ({ planes, onSelectPlane, selectedPlaneId, theme }) => {
                   <span className="text-gray-500">Altitude</span>
                   <span className="font-medium">{plane.altitude} ft</span>
                 </div>
-                <button
+                <Button
                   onClick={() => onSelectPlane(plane)}
-                  className="mt-3 w-full text-xs text-white px-2 py-1.5 rounded transition font-medium"
-                  style={{ backgroundColor: 'var(--accent-color)' }}
+                  className="mt-3 w-full text-xs"
+                  variant="primary"
                 >
                   Track Output
-                </button>
+                </Button>
               </div>
             </Popup>
           </Marker>
